@@ -1,0 +1,8 @@
+# alejandrooficial1929-max.github.io[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.alejandrooficial1929_max.twa",
+        "sha256_cert_fingerprints": ["E9:E4:F9:D1:89:C8:E9:0A:A5:60:23:B3:BC:07:63:6F:12:EB:0D:EC:32:D8:35:50:FA:B2:6D:10:5B:C1:4A:E2"]
+      }
+    }]
