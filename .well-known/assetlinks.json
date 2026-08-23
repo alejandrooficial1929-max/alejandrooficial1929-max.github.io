@@ -3,7 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "io.github.alejandrooficial1929_max.twa",
-        "sha256_cert_fingerprints": ["E9:E4:F9:D1:89:C8:E9:0A:A5:60:23:B3:BC:07:63:6F:12:EB:0D:EC:32:D8:35:50:FA:B2:6D:10:5B:C1:4A:E2"]
+        "sha256_cert_fingerprints": ["C2:7F:43:0D:21:17:55:4B:B4:20:92:DB:48:BF:D3:29:ED:2D:D7:44:B8:C1:8E:25:22:7D:5B:E5:BC:19:A1:47"]
       }
     }]
-
