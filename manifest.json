@@ -1,9 +1,10 @@
 {
-"id": "https://alejandrooficial1929-max.github.io/",
+  "id": "https://alejandrooficial1929-max.github.io/",
   "name": "GrisPay - Escuela Gloria Liendro",
+  "short_name": "GrisPay",
   "start_url": "./index.html",
   "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"]
+  "display_override": ["fullscreen", "standalone"],
   "background_color": "#1A1C1A",
   "theme_color": "#1A1C1A",
   "icons": [
