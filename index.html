@@ -1,0 +1,2572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>GrisPay</title>
+  <!-- Conexión PWA -->
+  <link rel="manifest" href="manifest.json?v=1.0.1">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('SW registrado', reg))
+          .catch(err => console.log('SW falló', err));
+      });
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#F4F9F9',
+            surface: '#FFFFFF',
+            surface2: '#EBF4F6',
+            borderc: '#D1E6EB',
+            gold: '#C9A227',
+            goldsoft: '#E0C468',
+            celeste: '#59C1EB',
+            celestedark: '#2A93C9',
+            brick: '#E2574C',
+            ink: '#1A1C1A',
+            inkmuted: '#717672'
+          },
+          fontFamily: {
+            display: ['Fraunces', 'serif'],
+            body: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #F4F9F9; }
+    .board-texture {
+      background-image:
+        linear-gradient(45deg, #EBF4F6 25%, transparent 25%),
+        linear-gradient(-45deg, #EBF4F6 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #EBF4F6 75%),
+        linear-gradient(-45deg, transparent 75%, #EBF4F6 75%);
+      background-size: 22px 22px;
+      background-position: 0 0, 0 11px, 11px -11px, -11px 0px;
+    }
+    .tabular { font-variant-numeric: tabular-nums; }
+    .scrollbar-none::-webkit-scrollbar { display: none; }
+    @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .anim-slide-up { animation: slideUp 0.25s ease-out; }
+    .anim-fade-in { animation: fadeIn 0.2s ease-out; }
+  </style>
+</head>
+<body class="font-body text-ink min-h-screen">
+
+  <!-- ================= PANTALLA DE LOGIN ================= -->
+<div id="pantallaLogin" class="fixed inset-0 z-[100] bg-bg flex flex-col items-center justify-center p-5">
+  <div class="w-full max-w-sm">
+    <!-- Logo/Encabezado de la App -->
+    <div class="text-center mb-8">
+      <div class="w-20 h-20 bg-ink rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-xl shadow-ink/20 mb-4">
+        🐈‍⬛
+      </div>
+      <h1 class="font-display text-4xl text-ink leading-none">GrisPay</h1>
+      <p class="text-inkmuted text-sm font-medium">Escuela Gloria Liendro</p>
+    </div>
+
+    <!-- Caja de Login -->
+    <div class="bg-surface border border-borderc rounded-3xl p-6 shadow-sm">
+      <h2 id="loginTitulo" class="font-display text-xl text-ink mb-4 text-center">Inicia Sesión</h2>
+      
+      <!-- Input de Usuario -->
+      <div class="mb-4">
+        <label class="text-[10px] uppercase tracking-wider text-inkmuted font-bold mb-1 block">Nombre de Usuario</label>
+        <input type="text" id="loginUsername" placeholder="Ej: Baltasar Botelli" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-celeste font-medium transition-colors" autocomplete="username">
+      </div>
+
+      <!-- Input de Contraseña (Oculto por defecto, se muestra tras verificar el usuario) -->
+      <div id="loginPasswordContainer" class="hidden mb-6">
+        <label class="text-[10px] uppercase tracking-wider text-inkmuted font-bold mb-1 block">Contraseña</label>
+        <input type="password" id="loginPassword" placeholder="Mínimo 4 caracteres" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-celeste font-medium transition-colors" autocomplete="current-password">
+        <p id="loginPasswordAyuda" class="text-[10px] text-inkmuted mt-2 hidden">Crea una nueva contraseña. Puede tener letras, números y símbolos.</p>
+      </div>
+
+      <!-- Botón de Acción -->
+      <button id="btnLoginAction" onclick="verificarUsuarioLogin()" class="w-full bg-celeste text-surface font-bold rounded-xl py-3 active:scale-[0.98] transition-transform shadow-sm text-base">
+        Continuar
+      </button>
+      
+      <!-- Estado de Carga -->
+      <p id="loginLoading" class="text-center text-sm font-medium text-inkmuted mt-3 hidden">Verificando...</p>
+    </div>
+  </div>
+</div>
+
+  <div class="max-w-md mx-auto min-h-screen relative">
+
+    
+
+    <!-- ================= APP ================= -->
+    <div id="app" class="hidden pb-28">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 pt-6 pb-4">
+        <div class="flex items-center gap-3">
+          <div id="avatarInicial" class="w-10 h-10 rounded-full bg-surface border-2 border-celeste flex items-center justify-center font-display text-celestedark text-sm shadow-sm"></div>
+          <div>
+            <p id="nombreUsuario" class="text-sm font-bold text-ink leading-tight"></p>
+            <p id="rolUsuario" class="text-xs text-celestedark font-medium leading-tight"></p>
+          </div>
+        </div>
+        <button id="btnLogout" class="w-9 h-9 rounded-full bg-surface border border-borderc flex items-center justify-center active:scale-95 transition-transform shadow-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A93C9" stroke-width="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 mx-5 mb-5 bg-surface border border-borderc rounded-full p-1 shadow-sm">
+        <button id="tabBtnBilletera" class="flex-1 text-sm font-semibold py-2 rounded-full bg-celeste text-surface transition-colors">Billetera</button>
+        <button id="tabBtnTienda" class="flex-1 text-sm font-semibold py-2 rounded-full text-inkmuted transition-colors">Tienda</button>
+        <button id="tabBtnBanco" class="hidden flex-1 text-sm font-semibold py-2 rounded-full text-inkmuted transition-colors">Blacky Bank</button>
+      </div>
+
+      <div id="tabBilletera">
+      <!-- Balance card -->
+      <div class="mx-5 relative overflow-hidden rounded-3xl border border-borderc bg-surface p-6 shadow-sm">
+        <div class="board-texture absolute inset-0 opacity-50 pointer-events-none"></div>
+        <div class="absolute -right-2 -bottom-2 opacity-10">
+           <svg width="100" height="100" viewBox="0 0 24 24" fill="#1A1C1A">
+            <path d="M12 8.5c-1.5 0-2.5-1.5-2.5-3s1-2.5 2.5-2.5 2.5 1 2.5 2.5-1 3-2.5 3zm-5.5 2c-1.3 0-2.3-1.3-2.3-2.5S5.2 6 6.5 6 8.8 7.3 8.8 8.5 7.8 10.5 6.5 10.5zm11 0c-1.3 0-2.3-1.3-2.3-2.5s1-2.5 2.3-2.5 2.3 1.3 2.3 2.5-1 2.5-2.3 2.5zm-5.5 11c-3.5 0-5.5-2.5-6.5-4.5-.5-1-1-2.5 0-4 1-1.2 2.5-1 3.5-.5 1 .5 2 1.5 3 1.5s2-1 3-1.5c1-.5 2.5-.7 3.5.5 1 1.5.5 3 0 4-1 2-3 4.5-6.5 4.5z"/>
+          </svg>
+        </div>
+        
+        <p class="text-xs uppercase tracking-widest text-celestedark font-bold relative">Saldo disponible</p>
+        <div class="flex items-baseline gap-2 mt-2 relative">
+          <span id="saldoUsuario" class="font-display text-5xl text-ink tabular">0.00</span>
+          <span class="text-gold font-bold text-xl">GC</span>
+        </div>
+        <button id="btnVerRangos" class="flex items-center gap-2 mt-4 relative bg-bg border border-borderc rounded-full pl-2 pr-3 py-1.5 active:scale-[0.98] transition-transform">
+          <span id="iconoRango" class="text-lg"></span>
+          <span id="badgeRango" class="text-xs text-ink font-semibold"></span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2A93C9" stroke-width="2" class="ml-1">
+            <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div id="zonaProgresoXp" class="mt-4 relative">
+          <div class="w-full h-3 bg-borderc rounded-full overflow-hidden border border-white">
+            <div id="barraXp" class="h-full bg-gold transition-all duration-500" style="width:0%"></div>
+          </div>
+          <p id="textoXp" class="text-xs text-celestedark font-bold mt-2 font-mono"></p>
+        </div>
+
+        <!-- BOTÓN PORTAL A BATTLE GRIS -->
+        <button onclick="abrirBattleGris()" class="w-full mt-6 bg-gradient-to-r from-slate-800 to-black text-surface border border-gold/50 shadow-[0_0_15px_rgba(201,162,39,0.3)] font-display text-xl rounded-xl py-3 active:scale-[0.98] transition-all flex items-center justify-center gap-3 overflow-hidden relative group">
+          <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1000&auto=format&fit=crop')] opacity-20 bg-cover bg-center group-hover:scale-110 transition-transform duration-700"></div>
+          <span class="relative z-10 text-gold">⚔️</span>
+          <span class="relative z-10 tracking-widest uppercase">Entrar a Battle Gris</span>
+        </button>
+
+        <!-- INDICADOR DE DEUDA PÚBLICA -->
+        <div id="zonaDeudaPublica" class="hidden mt-4 pt-4 border-t border-borderc relative">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-xs uppercase tracking-widest text-brick font-bold">Deuda Pública</p>
+            <p class="font-mono text-brick font-bold text-sm"><span id="montoDeuda">0.00</span> GC</p>
+          </div>
+          <button onclick="abrirModalPagarDeuda()" class="w-full bg-brick/10 text-brick font-bold text-xs py-2 rounded-lg active:scale-[0.98] transition-transform">
+            Abonar a la Deuda
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="grid grid-cols-2 gap-3 mx-5 mt-5" id="quickActions">
+        <button id="btnAbrirTransferir" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left active:scale-[0.98] transition-transform flex flex-col items-center text-center">
+          <div class="bg-celeste/20 p-3 rounded-full mb-2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2A93C9" stroke-width="2">
+              <path d="M17 8l4 4m0 0l-4 4m4-4H3m4-8L3 8m0 0l4 4M3 8h14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <p class="font-bold text-sm text-ink">Transferir</p>
+          <p class="text-xs text-inkmuted mt-0.5">A un compañero</p>
+        </button>
+        <button id="btnAbrirEmitir" class="hidden bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left active:scale-[0.98] transition-transform flex flex-col items-center text-center">
+          <div class="bg-gold/20 p-3 rounded-full mb-2">
+             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A227" stroke-width="2">
+              <path d="M12 2l2.5 4.5L19 8l-3 3.5.7 4.8L12 14.3l-4.7 2 .7-4.8L5 8l4.5-1.5z" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <p class="font-bold text-sm text-ink">Emitir premio</p>
+          <p class="text-xs text-inkmuted mt-0.5">Por ejercicios</p>
+        </button>
+      </div>
+
+      <!-- ================= HERRAMIENTAS DE GOBIERNO (DOCENTE) ================= -->
+      <div id="panelServiciosDocente" class="hidden mx-5 mt-6 mb-2">
+        <h3 class="text-sm font-bold text-ink mb-3">Gestión de Gobierno</h3>
+        <div class="grid grid-cols-2 gap-3">
+          
+          <button onclick="abrirBoletinIndec()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform">
+            <div class="text-2xl mb-2">📊</div>
+            <p class="font-bold text-xs text-ink">Consultar INDEC</p>
+            <p class="text-[10px] text-inkmuted mt-1 font-medium">Inflación oficial</p>
+          </button>
+
+          <button onclick="abrirModalPrestamoGobierno()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform">
+            <div class="text-2xl mb-2">🏦</div>
+            <p class="font-bold text-xs text-ink">Pedir Préstamo</p>
+            <p class="text-[10px] text-inkmuted mt-1 font-medium">Al Blacky Bank</p>
+          </button>
+
+        </div>
+      </div>
+
+<!-- ================= HERRAMIENTAS CIUDADANAS (ALUMNOS) ================= -->
+      <div id="panelServiciosAlumno" class="hidden mx-5 mt-8 mb-2">
+        <h3 class="text-sm font-bold text-ink mb-3">Servicios Desbloqueables</h3>
+        <div class="grid grid-cols-2 gap-3">
+          
+          <!-- Boletín INDEC -->
+          <button id="btnAppIndec" onclick="abrirBoletinIndec()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform opacity-50 grayscale">
+            <div id="candadoIndec" class="absolute top-3 right-3 text-sm">🔒</div>
+            <div class="text-2xl mb-2">📰</div>
+            <p class="font-bold text-xs text-ink">Boletín INDEC</p>
+            <p id="textoNivelIndec" class="text-[10px] text-inkmuted mt-1 font-medium">Requiere Nivel 5</p>
+          </button>
+
+          <!-- Préstamos -->
+          <button id="btnAppPrestamos" onclick="abrirModalPrestamos()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform opacity-50 grayscale">
+            <div id="candadoPrestamos" class="absolute top-3 right-3 text-sm">🔒</div>
+            <div class="text-2xl mb-2">🤝</div>
+            <p class="font-bold text-xs text-ink">Préstamos</p>
+            <p id="textoNivelPrestamos" class="text-[10px] text-inkmuted mt-1 font-medium">Requiere Nivel 10</p>
+          </button>
+
+          <!-- Monotributo -->
+          <button id="btnAppImpuestos" onclick="abrirModalMonotributo()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform opacity-50 grayscale col-span-2">
+            <div id="candadoImpuestos" class="absolute top-3 right-3 text-sm">🔒</div>
+            <div class="text-2xl mb-2">🏢</div>
+            <p class="font-bold text-xs text-ink">Monotributo GrisPay</p>
+            <p id="textoNivelImpuestos" class="text-[10px] text-inkmuted mt-1 font-medium">Negocio en Nivel 15</p>
+          </button>
+
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="mx-5 mt-6 mb-8 bg-surface rounded-3xl p-5 border border-borderc shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display text-xl text-celestedark">Movimientos</h2>
+          <button id="btnRefrescar" class="text-xs text-celeste font-semibold underline decoration-celeste">Actualizar</button>
+        </div>
+        <div id="historialList" class="space-y-3"></div>
+        
+        <!-- Botón Estilo MercadoPago -->
+        <button id="btnVerTodosMovimientos" class="hidden w-full mt-4 py-3 bg-surface2 text-celestedark font-bold text-xs uppercase tracking-wider rounded-xl border border-borderc active:scale-[0.98] transition-transform">
+          Ver todos los movimientos
+        </button>
+
+        <div id="historialVacio" class="hidden text-center py-6">
+          <p class="text-inkmuted text-sm font-medium">Todavía no hay movimientos.</p>
+        </div>
+        <div id="historialCargando" class="text-center py-6">
+          <p class="text-celestedark text-sm font-medium">Cargando historial...</p>
+        </div>
+      </div>
+
+      </div><!-- cierre tabBilletera -->
+
+<!-- ============ TAB: BLACKY BANK ============ -->
+
+<div id="tabBanco" class="hidden px-5 mt-2 pb-10">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="text-4xl">🏦</div>
+    <div>
+      <h2 class="font-display text-2xl text-celestedark leading-tight">Blacky Bank</h2>
+      <p class="text-xs text-inkmuted font-medium">Banco Central de GrisPay</p>
+    </div>
+  </div>
+
+  <!-- Monitor de la Economía -->
+  <div class="bg-ink text-surface rounded-3xl p-6 mb-4 shadow-lg relative overflow-hidden">
+    <div class="absolute -right-4 -bottom-4 text-6xl opacity-10">🐕‍🦺</div>
+    <p class="text-xs uppercase tracking-widest text-surface/70 font-bold mb-1">Masa Monetaria</p>
+    <div class="flex items-baseline gap-2 mb-4">
+      <span id="bancoMasaMonetaria" class="font-display text-4xl tabular">0.00</span>
+      <span class="text-gold font-bold">GC</span>
+    </div>
+    
+    <div class="grid grid-cols-2 gap-4 border-t border-surface/20 pt-4">
+      <div>
+        <p class="text-[10px] uppercase text-surface/70 font-bold">Respaldo (Kiosco)</p>
+        <p id="bancoValorKiosco" class="font-mono text-sm font-bold text-emerald-400">0.00 GC</p>
+      </div>
+      <div>
+        <p class="text-[10px] uppercase text-surface/70 font-bold">Gasto Pub. (7 días)</p>
+        <p id="bancoGastoPublico" class="font-mono text-sm font-bold text-brick">0.00 GC</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Termómetro de Inflación (INDEC) -->
+  <div class="bg-surface border border-borderc rounded-2xl p-4 mb-5 shadow-sm">
+    <div class="flex justify-between items-center mb-3">
+      <p class="text-xs uppercase tracking-wider text-celestedark font-bold">Informe INDEC</p>
+      <span id="badgeEstadoInflacion" class="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500">APAGADA</span>
+    </div>
+    
+    <div class="flex items-end justify-between">
+      <div>
+        <p class="text-[10px] text-inkmuted font-medium mb-1">Inflación Oficial (Aplicada)</p>
+        <p id="bancoInflacionActual" class="font-display text-2xl text-ink leading-none">0.0%</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[10px] text-inkmuted font-medium mb-1">Inflación en Tiempo Real</p>
+        <p id="bancoInflacionProyectada" class="font-display text-xl text-inkmuted leading-none">0.0%</p>
+      </div>
+    </div>
+    
+    <p id="bancoAlertaInflacion" class="text-xs mt-3 font-medium text-inkmuted border-t border-borderc pt-2">
+      Inicia el sistema inflacionario para activar el monitoreo.
+    </p>
+  </div>
+
+  <h3 class="text-sm font-bold text-ink mb-3">Operaciones Centrales</h3>
+  <div class="grid grid-cols-4 gap-2 mb-5">
+    <button onclick="abrirModalEmitirBanco()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
+      <div class="bg-emerald-100 text-emerald-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">🖨️</div>
+      <p class="font-bold text-[10px] text-ink">Emitir</p>
+    </button>
+    <button onclick="abrirModalCierre()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
+      <div class="bg-celeste/20 text-celestedark w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">📊</div>
+      <p class="font-bold text-[10px] text-ink">Cerrar</p>
+    </button>
+    <button onclick="abrirModalCrearUsuario()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
+      <div class="bg-purple-100 text-purple-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">👤</div>
+      <p class="font-bold text-[10px] text-ink">Usuarios</p>
+    </button>
+    <button onclick="abrirModalAuditoria()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
+      <div class="bg-brick/10 text-brick w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">⚖️</div>
+      <p class="font-bold text-[10px] text-ink">Auditar</p>
+    </button>
+  </div>
+</div>
+
+<!-- ================= MODAL: IMPRIMIR BILLETES (BLACKY BANK) ================= -->
+<div id="modalEmitirBanco" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalEmitirBanco')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-emerald-700 mb-1">Inyección de Liquidez</h3>
+    <p class="text-inkmuted text-sm font-medium mb-5">Emitir GrisCoins directo desde el Blacky Bank.</p>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Beneficiario (Docente o Alumno)</label>
+    <select id="selectBeneficiarioBanco" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-emerald-500 font-medium"></select>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Monto (GC)</label>
+    <input id="inputMontoBanco" type="number" min="1" step="0.01" placeholder="Ej: 500.00" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-4 tabular focus:outline-none focus:border-emerald-500 font-medium">
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Concepto Oficial</label>
+    <input id="inputConceptoBanco" type="text" placeholder="Ej: Presupuesto para premios de Ajedrez" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-emerald-500 font-medium">
+
+    <button id="btnConfirmarEmisionBanco" onclick="ejecutarEmisionBanco()" class="w-full bg-emerald-600 text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+      Emitir y Transferir
+    </button>
+    <button onclick="cerrarModal('modalEmitirBanco')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+  </div>
+</div>
+
+      <!-- ============ TAB: TIENDA ============ -->
+      <div id="tabTienda" class="hidden px-5 mt-2">
+        <h2 class="font-display text-2xl text-celestedark mb-4">Kiosco Escolar</h2>
+        <!-- Botón exclusivo para el panel de Docente -->
+<div id="contenedorBotonCrearProducto" class="mb-4 hidden">
+  <button onclick="abrirModalCrearProducto()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+    <span>➕</span> Crear nuevo producto
+  </button>
+</div>
+
+<!-- Modal para Crear Producto -->
+<div id="modalCrearProducto" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+    <h3 class="text-xl font-bold text-gray-800 mb-4">Añadir Producto al Kiosco</h3>
+    
+    <form id="formCrearProducto" onsubmit="guardarNuevoProducto(event)" class="space-y-3">
+      <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Imagen del Producto</label>
+        <input type="file" id="prodFoto" accept="image/*" required class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Título</label>
+        <input type="text" id="prodTitulo" placeholder="Ej: Paquete de Galletas" required class="w-full border p-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Subtítulo / Marca</label>
+        <input type="text" id="prodSubtitulo" placeholder="Ej: OREO" required class="w-full border p-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Precio (GC)</label>
+          <input type="number" step="0.5" id="prodPrecio" placeholder="30" required class="w-full border p-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Cantidad (Stock)</label>
+          <input type="number" id="prodStock" placeholder="10" required class="w-full border p-2 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-4">
+        <button type="button" onclick="cerrarModalCrearProducto()" class="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancelar</button>
+        <button type="submit" id="btnGuardarProd" class="w-1/2 bg-emerald-600 text-white py-2 rounded-lg font-semibold hover:bg-emerald-700 transition">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+        <div id="tiendaGrid" class="grid grid-cols-2 gap-3"></div>
+        <div id="tiendaVacia" class="hidden text-center py-10 bg-surface rounded-2xl border border-borderc shadow-sm">
+          <p class="text-inkmuted text-sm font-medium">No hay productos disponibles por ahora.</p>
+        </div>
+        <div id="tiendaCargando" class="text-center py-10 bg-surface rounded-2xl border border-borderc shadow-sm">
+          <p class="text-celestedark text-sm font-medium">Armando el kiosco...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB: BATTLE GRIS ============ -->
+      <div id="tabBattleGris" class="hidden px-5 mt-2">
+        <div class="relative w-full h-[65vh] rounded-3xl overflow-hidden shadow-2xl border-4 border-ink">
+          <!-- Fondo Genérico HD (Reemplazable por un video o GIF luego) -->
+          <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-60">
+          <div class="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-ink/50"></div>
+          
+          <!-- Logo Superior -->
+          <div class="absolute top-6 left-1/2 -translate-x-1/2 text-center">
+            <h2 class="font-display text-4xl text-surface drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider">BATTLE GRIS</h2>
+          </div>
+
+          <!-- Botones Centrales -->
+          <div class="absolute inset-0 flex flex-col sm:flex-row items-center justify-center gap-6 p-4 mt-10">
+            <button class="w-32 h-32 bg-celeste/90 backdrop-blur-md rounded-2xl border-2 border-celeste text-surface font-display text-2xl shadow-[0_0_20px_rgba(89,193,235,0.6)] active:scale-95 transition-transform flex flex-col items-center justify-center">
+              <span class="text-4xl mb-2">⚔️</span>
+              Jugar
+            </button>
+            <button class="w-32 h-32 bg-gold/90 backdrop-blur-md rounded-2xl border-2 border-gold text-surface font-display text-2xl shadow-[0_0_20px_rgba(201,162,39,0.6)] active:scale-95 transition-transform flex flex-col items-center justify-center">
+              <span class="text-4xl mb-2">🏆</span>
+              Eventos
+            </button>
+          </div>
+        </div>
+        <p class="text-center text-inkmuted text-xs mt-4 font-medium uppercase tracking-widest">Para una mejor experiencia, gira tu dispositivo</p>
+      </div>
+
+    <!-- ================= MODAL: TRANSFERIR ================= -->
+    <div id="modalTransferir" class="hidden fixed inset-0 z-40 flex items-end justify-center">
+      <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" data-close-modal></div>
+      <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+        <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+        <h3 class="font-display text-2xl text-celestedark mb-1">Transferir</h3>
+        <p class="text-inkmuted text-sm mb-5 font-medium">Enviá GrisCoins a tus amigos.</p>
+
+        <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Destinatario</label>
+        <select id="selectDestinatario" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-celeste font-medium"></select>
+
+        <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Monto (GC)</label>
+        <input id="inputMontoTransferir" type="number" min="1" step="0.01" placeholder="0.00" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-2 tabular focus:outline-none focus:border-celeste font-medium">
+        <p id="previewComision" class="text-xs text-inkmuted mb-4 font-mono font-medium"></p>
+
+        <p id="errorTransferir" class="text-brick text-sm font-bold mb-3 hidden"></p>
+        <button id="btnConfirmarTransferir" class="w-full bg-celeste text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+          Enviar GrisCoins
+        </button>
+        <button data-close-modal class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: EMITIR (GOBIERNO) ================= -->
+    <div id="modalEmitir" class="hidden fixed inset-0 z-40 flex items-end justify-center">
+      <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" data-close-modal></div>
+      <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up max-h-[90vh] overflow-y-auto scrollbar-none">
+        <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+        <h3 class="font-display text-2xl text-celestedark mb-1">Premiar Alumno</h3>
+        <p class="text-inkmuted text-sm font-medium mb-5">El sistema calculará la Experiencia (XP) automáticamente según la dificultad.</p>
+
+        <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Alumno</label>
+        <select id="selectAlumnoEmitir" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-celeste font-medium"></select>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-celestedark font-bold mb-2 block">Tipo de Tarea</label>
+            <select id="selectTipoTarea" onchange="verificarTareaPersonalizada()" class="w-full bg-bg border border-borderc rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-celeste font-medium">
+              <option value="Táctica">Táctica</option>
+              <option value="Finales">Finales</option>
+              <option value="Análisis">Análisis</option>
+              <option value="Torneo">Torneo</option>
+              <option value="Otro">Otro (Personalizado)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-celestedark font-bold mb-2 block">Dificultad</label>
+            <select id="selectDificultadTarea" class="w-full bg-bg border border-borderc rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-celeste font-medium">
+              <option value="Iniciante">Iniciante</option>
+              <option value="Básico">Básico</option>
+              <option value="Intermedio">Intermedio</option>
+              <option value="Avanzado">Avanzado</option>
+              <option value="Campeón">Campeón</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="contenedorTareaPersonalizada" class="hidden mb-4">
+          <label class="text-[10px] uppercase tracking-wider text-celestedark font-bold mb-2 block">Nombre de la Actividad (Ej: Teatro de Enfilada)</label>
+          <input id="inputTareaPersonalizada" type="text" placeholder="Describe la actividad..." class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-celeste font-medium">
+        </div>
+
+        <label class="text-[10px] uppercase tracking-wider text-celestedark font-bold mb-2 block">Recompensa Monetaria (Gasto Público)</label>
+        <input id="inputMontoEmitir" type="number" min="1" step="0.01" placeholder="Ej: 50.00 GC" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-4 tabular focus:outline-none focus:border-celeste font-medium">
+
+        <p id="errorEmitir" class="text-brick text-sm font-bold mb-3 hidden"></p>
+        <button id="btnConfirmarEmitir" class="w-full bg-gold text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+          Otorgar Premio
+        </button>
+        <button data-close-modal class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+      </div>
+    </div>
+
+<!-- ================= MODAL: CONFIRMAR COMPRA ================= -->
+    <div id="modalComprar" class="hidden fixed inset-0 z-40 flex items-end justify-center">
+      <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" data-close-modal></div>
+      <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+        <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+        <div id="compraIconoPreview" class="text-6xl text-center mb-3"></div>
+        <h3 id="compraNombrePreview" class="font-display text-2xl text-center text-ink mb-1"></h3>
+        <p id="compraPrecioPreview" class="text-center text-gold font-mono font-bold text-xl mb-6"></p>
+
+        <p id="errorComprar" class="text-brick text-sm font-bold mb-3 hidden text-center"></p>
+        <button id="btnConfirmarCompra" class="w-full bg-celeste text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+          Confirmar compra
+        </button>
+        <button data-close-modal class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+      </div>
+    </div>
+
+<!-- ================= MODAL: ESCALA DE RANGOS ================= -->
+    <div id="modalRangos" class="hidden fixed inset-0 z-40 flex items-end justify-center">
+      <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" data-close-modal></div>
+      <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up max-h-[85vh] overflow-y-auto scrollbar-none">
+        <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+        <h3 class="font-display text-2xl text-celestedark mb-1">Escala de Rangos</h3>
+        <p class="text-inkmuted text-sm font-medium mb-5">Ganá XP resolviendo ejercicios y subí de nivel.</p>
+        <div id="listaRangos"></div>
+        <button data-close-modal class="w-full text-inkmuted font-semibold text-sm py-4 mt-2">Cerrar</button>
+      </div>
+    </div>
+
+<!-- ================= MODAL: SUBIDA DE RANGO ÉPICA ================= -->
+    <div id="modalLevelUp" class="hidden fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black">
+      <!-- Reproductor de video de fondo -->
+      <video id="videoLevelUp" class="absolute inset-0 w-full h-full object-cover opacity-90" playsinline muted></video>
+      
+      <!-- Sombra inferior para que el texto sea siempre legible -->
+      <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+
+      <!-- Contenido de texto y botones -->
+      <div class="relative z-10 flex flex-col items-center w-full px-6 text-center mt-auto mb-12">
+        <h2 id="tituloLevelUp" class="font-display text-4xl text-gold mb-2 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] transition-opacity duration-1000 opacity-0"></h2>
+        <p id="privilegioLevelUp" class="text-surface font-medium text-sm mb-8 drop-shadow-[0_1px_5px_rgba(0,0,0,0.8)] transition-opacity duration-1000 opacity-0"></p>
+        
+        <button id="btnContinuarLevelUp" class="w-full max-w-[250px] bg-gold text-ink font-bold rounded-xl py-4 active:scale-[0.98] transition-all duration-1000 shadow-[0_0_20px_rgba(201,162,39,0.4)] opacity-0 pointer-events-none">
+          ¡Aceptar Rango!
+        </button>
+      </div>
+    </div>
+
+    
+  </div>
+  <!-- ================= MODAL: CONFIGURAR CIERRE INDEC ================= -->
+<div id="modalCierreIndec" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalCierreIndec')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-celestedark mb-1">Cierre de Período</h3>
+    <p class="text-inkmuted text-sm font-medium mb-5">Gestiona cómo y cuándo se actualiza la inflación.</p>
+
+    <!-- Botón Manual -->
+    <button onclick="ejecutarCierreSemanalManual()" class="w-full bg-celeste text-surface font-bold rounded-xl py-3 mb-6 active:scale-[0.98] transition-transform shadow-sm text-base flex items-center justify-center gap-2">
+      <span>⚡</span> Cerrar período AHORA
+    </button>
+
+    <!-- Panel Automático -->
+    <div class="border-t border-borderc pt-4 mb-4">
+      <h4 class="text-xs uppercase tracking-wider text-ink font-bold mb-3">Automatización Semanal</h4>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label class="text-[10px] uppercase text-inkmuted font-bold mb-1 block">Día</label>
+          <select id="selectDiaCierre" class="w-full bg-bg border border-borderc rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-celeste font-medium">
+            <option value="1">Lunes</option>
+            <option value="2">Martes</option>
+            <option value="3">Miércoles</option>
+            <option value="4">Jueves</option>
+            <option value="5">Viernes</option>
+            <option value="6">Sábado</option>
+            <option value="7">Domingo</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] uppercase text-inkmuted font-bold mb-1 block">Hora (Aprox)</label>
+          <select id="selectHoraCierre" class="w-full bg-bg border border-borderc rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-celeste font-medium">
+            <!-- Las horas se llenan por JS -->
+          </select>
+        </div>
+      </div>
+      
+      <div class="flex gap-2">
+        <button id="btnGuardarAutoCierre" onclick="guardarProgramacionCierre()" class="flex-1 bg-ink text-surface font-bold rounded-xl py-3 active:scale-[0.98] transition-transform shadow-sm text-sm">
+          Programar Reloj
+        </button>
+        <button id="btnDesactivarAutoCierre" onclick="desactivarProgramacionCierre()" class="hidden bg-brick/10 text-brick font-bold rounded-xl px-4 py-3 active:scale-[0.98] transition-transform text-sm">
+          Apagar
+        </button>
+      </div>
+      <p class="text-[10px] text-inkmuted mt-2 leading-tight">Nota: Por estructura de servidores, el cierre automático se disparará en algún momento dentro de la hora elegida.</p>
+    </div>
+
+<button onclick="cerrarModal('modalCierreIndec')" class="w-full text-inkmuted font-semibold text-sm py-3">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: CREAR USUARIO (TESORERO) ================= -->
+<div id="modalCrearUsuario" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalCrearUsuario')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-purple-700 mb-1">Nuevo Usuario</h3>
+    <p class="text-inkmuted text-sm font-medium mb-5">Pre-autoriza a un alumno o docente para que pueda iniciar sesión.</p>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Nombre Completo</label>
+    <input id="inputNuevoNombre" type="text" placeholder="Ej: Baltasar Botelli" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-purple-500 font-medium">
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Rol en el sistema</label>
+    <select id="selectNuevoRol" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-purple-500 font-medium">
+      <option value="alumno">Alumno (Ciudadano)</option>
+      <option value="docente">Docente (Gobierno)</option>
+      <option value="tesorero">Tesorero (Banco Central)</option>
+    </select>
+
+    <button id="btnConfirmarUsuario" onclick="ejecutarCreacionUsuario()" class="w-full bg-purple-600 text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+      Autorizar Acceso
+    </button>
+<button onclick="cerrarModal('modalCrearUsuario')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: PEDIR PRÉSTAMO (GOBIERNO) ================= -->
+<div id="modalPrestamoGobierno" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalPrestamoGobierno')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-brick mb-1">Préstamo Estatal</h3>
+    <p class="text-inkmuted text-sm font-medium mb-5">Solicita fondos de rescate al Banco Central. Deberás devolverlo con intereses.</p>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Monto Solicitado (GC)</label>
+    <input id="inputMontoPrestamo" type="number" min="1" step="0.01" placeholder="Ej: 2000.00" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-2 tabular focus:outline-none focus:border-brick font-medium">
+    
+    <div class="bg-brick/10 border border-brick/20 rounded-xl p-3 mb-6">
+      <p class="text-xs text-brick font-bold flex justify-between">
+        <span>Tasa de interés:</span>
+        <span>15%</span>
+      </p>
+      <p class="text-[10px] text-brick/80 mt-1 leading-tight">El Banco Central te descontará automáticamente el capital + intereses de tus futuros ingresos.</p>
+    </div>
+
+    <button id="btnConfirmarPrestamo" onclick="ejecutarSolicitudPrestamo()" class="w-full bg-brick text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+      Enviar Solicitud
+    </button>
+    <button onclick="cerrarModal('modalPrestamoGobierno')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+  </div>
+</div>
+<!-- ================= MODAL: PAGAR DEUDA (GOBIERNO) ================= -->
+<div id="modalPagarDeuda" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalPagarDeuda')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-brick mb-1">Pagar Deuda</h3>
+    <p class="text-inkmuted text-sm font-medium mb-5">Deuda actual: <span id="deudaTotalPagar" class="font-bold text-brick">0.00</span> GC</p>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Monto a pagar (GC)</label>
+    <input id="inputMontoPagarDeuda" type="number" min="1" step="0.01" placeholder="Ej: 500.00" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-6 tabular focus:outline-none focus:border-brick font-medium">
+    
+    <button id="btnConfirmarPagoDeuda" onclick="ejecutarPagoDeuda()" class="w-full bg-brick text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+      Pagar al Banco Central
+    </button>
+    <button onclick="cerrarModal('modalPagarDeuda')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: BOLETÍN INDEC ================= -->
+<div id="modalIndec" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-ink/60 backdrop-blur-sm" onclick="cerrarModal('modalIndec')"></div>
+  <div class="relative w-full max-w-md bg-surface border border-borderc rounded-3xl p-6 anim-slide-up shadow-2xl">
+    
+    <!-- Cabecera estilo periódico -->
+    <div class="border-b-2 border-ink pb-3 mb-4 text-center">
+      <h3 class="font-display text-3xl text-ink uppercase tracking-widest">INDEC</h3>
+      <p class="text-[10px] uppercase tracking-widest text-inkmuted font-bold">Instituto Nacional de Datos y Economía</p>
+    </div>
+    
+    <!-- Pantalla de carga -->
+    <div id="indecContenidoCargando" class="text-center py-8">
+      <div class="text-4xl mb-2 animate-pulse">🖨️</div>
+      <p class="text-inkmuted text-sm font-medium">Imprimiendo reporte oficial...</p>
+    </div>
+
+    <!-- Contenido del reporte -->
+    <div id="indecContenido" class="hidden">
+      <div class="bg-surface2 rounded-2xl p-4 mb-4 text-center border border-borderc">
+        <p class="text-xs uppercase tracking-wider text-inkmuted font-bold mb-1">Inflación Oficial Aplicada</p>
+        <p id="indecInflacion" class="font-display text-5xl text-brick mb-1 tabular-nums">0.0%</p>
+        <p id="indecEstado" class="text-[10px] font-bold px-2 py-1 rounded-full bg-brick/10 text-brick inline-block">ACTIVA</p>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="border border-borderc rounded-xl p-3">
+          <p class="text-[10px] uppercase text-inkmuted font-bold mb-1">Dinero en la calle</p>
+          <p id="indecMasa" class="font-mono text-sm font-bold text-ink">0 GC</p>
+        </div>
+        <div class="border border-borderc rounded-xl p-3">
+          <p class="text-[10px] uppercase text-inkmuted font-bold mb-1">Último Cierre</p>
+          <p id="indecFecha" class="font-mono text-sm font-bold text-ink">--/--/----</p>
+        </div>
+      </div>
+      
+      <div class="bg-celeste/10 border border-celeste/20 rounded-xl p-4 mb-2">
+        <p class="text-xs text-celestedark font-bold mb-1 flex items-center gap-1"><span>💡</span> ¿Qué significa esto?</p>
+        <p id="indecExplicacion" class="text-xs text-inkmuted leading-relaxed font-medium">...</p>
+      </div>
+    </div>
+
+    <button onclick="cerrarModal('modalIndec')" class="w-full bg-ink text-surface font-bold rounded-xl py-4 mt-4 active:scale-[0.98] transition-transform shadow-sm text-base">Entendido</button>
+  </div>
+</div>
+<!-- ================= MODAL: PEDIR PRÉSTAMO (ALUMNO) ================= -->
+<div id="modalPrestamoAlumno" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalPrestamoAlumno')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-brick mb-1">Préstamo Personal</h3>
+    <p class="text-inkmuted text-sm font-medium mb-5">El Blacky Bank confía en ti. Límite actual: <span id="limitePrestamoAlumno" class="font-bold text-ink">0</span> GC.</p>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Monto a pedir (GC)</label>
+    <input id="inputMontoPrestamoAlumno" type="number" min="1" step="0.01" placeholder="Ej: 100.00" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-2 tabular focus:outline-none focus:border-brick font-medium">
+    
+    <div class="bg-brick/10 border border-brick/20 rounded-xl p-3 mb-6">
+      <p class="text-xs text-brick font-bold flex justify-between">
+        <span>Tasa de interés:</span>
+        <span>20%</span>
+      </p>
+      <p class="text-[10px] text-brick/80 mt-1 leading-tight">Recuerda devolverlo a tiempo abonando desde tu billetera principal.</p>
+    </div>
+
+    <button id="btnConfirmarPrestamoAlumno" onclick="ejecutarSolicitudPrestamoAlumno()" class="w-full bg-brick text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+      Pedir Préstamo
+    </button>
+    <button onclick="cerrarModal('modalPrestamoAlumno')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+  </div>
+</div>
+<!-- ================= MODAL: AUDITORÍA Y SANCIONES (TESORERO) ================= -->
+<div id="modalAuditoria" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalAuditoria')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-brick mb-1">Auditoría y Sanciones</h3>
+    <p class="text-inkmuted text-sm font-medium mb-5">Agrega o quita fondos y experiencia. Usa el signo menos (-) para multar.</p>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Usuario a intervenir</label>
+    <select id="selectAuditoriaUsuario" onchange="mostrarStatsAuditoria()" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-2 focus:outline-none focus:border-brick font-medium"></select>
+    
+    <!-- Info en tiempo real del usuario -->
+    <div id="infoAuditoriaUsuario" class="bg-surface2 border border-borderc rounded-xl p-3 mb-4 hidden flex justify-between">
+        <div>
+            <p class="text-[10px] uppercase text-inkmuted font-bold">Saldo Actual</p>
+            <p id="auditoriaSaldoActual" class="font-mono text-sm font-bold text-ink">0 GC</p>
+        </div>
+        <div class="text-right">
+            <p class="text-[10px] uppercase text-inkmuted font-bold">XP Actual</p>
+            <p id="auditoriaXPActual" class="font-mono text-sm font-bold text-ink">0 XP</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-brick font-bold mb-1 block">Ajuste GC (Ej: -20)</label>
+        <input id="inputAuditoriaGC" type="number" step="0.01" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 tabular focus:outline-none focus:border-brick font-medium">
+      </div>
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-celestedark font-bold mb-1 block">Ajuste XP (Ej: 500)</label>
+        <input id="inputAuditoriaXP" type="number" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 tabular focus:outline-none focus:border-brick font-medium">
+      </div>
+    </div>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block">Dictamen / Motivo Oficial</label>
+    <input id="inputAuditoriaMotivo" type="text" placeholder="Ej: Sanción por actitud antideportiva" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-brick font-medium">
+
+    <button id="btnConfirmarAuditoria" onclick="ejecutarAuditoria()" class="w-full bg-brick text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">
+      Ejecutar Resolución
+    </button>
+    <button onclick="cerrarModal('modalAuditoria')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+  </div>
+</div>
+<!-- ================= OVERLAY: ANIMACIÓN XP AL ENTRAR ================= -->
+<div id="overlayXpLogin" class="hidden fixed inset-0 z-[200] bg-ink/95 backdrop-blur-md flex flex-col items-center justify-center px-6">
+  <div class="text-6xl mb-4 animate-bounce">🌟</div>
+  <h2 class="font-display text-4xl text-surface mb-1">¡Bienvenido!</h2>
+  <p id="rangoOverlayXp" class="text-gold font-bold text-lg mb-10 uppercase tracking-widest text-center"></p>
+  
+  <div class="w-full max-w-sm relative">
+    <div class="w-full h-5 bg-surface/20 rounded-full overflow-hidden border-2 border-white/20 relative">
+      <!-- Barra que se llena -->
+      <div id="barraXpLogin" class="h-full bg-gradient-to-r from-goldsoft to-gold w-0 shadow-[0_0_20px_#C9A227] transition-all duration-[1500ms] ease-out"></div>
+    </div>
+    <!-- Partícula de luz (destello) -->
+    <div id="destelloXp" class="absolute top-1/2 -translate-y-1/2 left-0 w-8 h-8 bg-white rounded-full blur-md opacity-0 transition-all duration-[1500ms] ease-out"></div>
+  </div>
+  
+  <p id="textoXpLogin" class="text-surface font-mono mt-4 text-xl font-bold tracking-wider">Cargando...</p>
+  
+  <button onclick="document.getElementById('overlayXpLogin').classList.add('hidden')" class="mt-12 text-surface/50 font-bold text-sm uppercase tracking-wider py-2 px-4 rounded-full border border-surface/30 active:scale-95 transition-transform">
+    Continuar al panel
+  </button>
+</div>
+
+<!-- ================= PANTALLA: BATTLE GRIS (ECOSISTEMA INDEPENDIENTE) ================= -->
+<div id="pantallaBattleGris" class="hidden fixed inset-0 z-[150] bg-black text-white font-sans overflow-hidden">
+  
+  <!-- Fondo Épico -->
+  <img src="https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=1920&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-60">
+  <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/80"></div>
+  <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40"></div>
+
+  <!-- AVISO DE ROTACIÓN PARA MÓVILES EN VERTICAL -->
+  <div class="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center landscape:hidden">
+    <div class="text-6xl mb-4 animate-pulse">📱🔄</div>
+    <h2 class="font-display text-2xl text-gold text-center px-6">Gira tu teléfono</h2>
+    <p class="text-gray-400 text-sm mt-2 text-center px-6">Battle Gris se juega en formato horizontal.</p>
+    <button onclick="cerrarBattleGris()" class="mt-8 bg-celeste text-white font-bold py-2 px-6 rounded-full">Volver a Billetera</button>
+  </div>
+
+  <!-- UI DEL JUEGO (Solo visible bien en landscape) -->
+  <div class="absolute inset-0 hidden landscape:block">
+    
+    <!-- TOP LEFT: Perfil y Monedas -->
+    <div class="absolute top-4 left-4 flex gap-6 items-center">
+      <div class="bg-black/70 border border-gray-600 rounded-lg p-2 flex items-center gap-3 backdrop-blur-sm w-64">
+        <div class="w-12 h-12 bg-gray-800 border-2 border-gray-400 rounded-md overflow-hidden">
+          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="w-full h-full object-cover">
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-bold leading-tight" id="bgNombre">Cargando...</p>
+          <p class="text-[10px] text-gray-400 leading-tight mb-1">Escuela Gloria Liendro</p>
+          <div class="flex items-center gap-2">
+            <p class="text-[9px] font-bold text-gold uppercase tracking-wider" id="bgNivel">NIVEL 1</p>
+            <div class="h-1.5 flex-1 bg-gray-800 rounded-full overflow-hidden">
+              <div class="h-full bg-white w-1/2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 drop-shadow-[0_0_10px_rgba(0,0,0,0.8)]">
+        <div class="w-10 h-10 bg-gradient-to-b from-gray-300 to-gray-500 rounded-full border-2 border-gray-400 flex items-center justify-center text-xl shadow-lg">🪙</div>
+        <p class="font-display text-3xl font-bold tracking-wider" id="bgSaldo">0 GC</p>
+      </div>
+    </div>
+
+    <!-- TOP RIGHT: Botón Billetera -->
+    <div class="absolute top-4 right-4">
+      <button onclick="cerrarBattleGris()" class="bg-gradient-to-b from-cyan-400 to-cyan-600 border-2 border-cyan-200 text-white font-display text-2xl tracking-widest px-6 py-2 rounded-xl shadow-[0_0_20px_rgba(34,211,238,0.5)] active:scale-95 transition-transform flex items-center gap-2">
+        <span>💳</span> BILLETERA
+      </button>
+    </div>
+
+    <!-- MIDDLE LEFT: Eventos -->
+    <div class="absolute top-1/2 -translate-y-1/2 left-4">
+      <button class="relative w-48 h-32 bg-black border-4 border-red-600 rounded-xl overflow-hidden active:scale-95 transition-transform group shadow-2xl">
+        <div class="absolute inset-0 opacity-80" style="background-image: repeating-conic-gradient(#dc2626 0% 25%, #000 0% 50%); background-size: 20px 20px;"></div>
+        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/40 group-hover:bg-transparent transition-colors">
+          <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-1">🏰</div>
+          <span class="font-display text-2xl text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-widest">EVENTOS</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- BOTTOM LEFT: Tienda -->
+    <div class="absolute bottom-4 left-4">
+      <button class="bg-gradient-to-b from-yellow-300 to-yellow-500 border-2 border-yellow-200 text-black font-display text-2xl tracking-widest px-8 py-2 rounded-xl shadow-[0_0_20px_rgba(234,179,8,0.4)] active:scale-95 transition-transform flex items-center gap-2">
+        <span>🛒</span> TIENDA
+      </button>
+    </div>
+
+    <!-- MIDDLE RIGHT: Modos de Juego -->
+    <div class="absolute top-1/2 -translate-y-1/2 right-4 flex flex-col gap-4 w-72">
+      <!-- Botón Ranked -->
+      <button class="relative bg-gradient-to-r from-slate-800 to-slate-900 border border-yellow-500/50 rounded-lg p-3 text-left overflow-hidden active:scale-95 transition-transform shadow-2xl">
+        <div class="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-slate-700 to-transparent flex items-center justify-center">
+          <span class="text-4xl drop-shadow-md">♜</span>
+        </div>
+        <div class="pl-20">
+          <p class="font-display text-xl text-gray-200 tracking-wider">AJEDREZ: RANKED</p>
+          <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Modo Clasificatorio</p>
+          <div class="flex items-center gap-2">
+            <span class="text-xl">💀</span>
+            <div>
+              <p class="text-yellow-500 font-bold text-sm leading-tight uppercase">Master</p>
+              <p class="text-gray-500 text-[9px] leading-tight uppercase">Master / Maestro</p>
+            </div>
+          </div>
+        </div>
+      </button>
+
+      <!-- Botón Clásica -->
+      <button class="relative bg-gradient-to-r from-slate-800 to-slate-900 border border-cyan-500/50 rounded-lg p-3 text-left overflow-hidden active:scale-95 transition-transform shadow-2xl">
+        <div class="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-slate-700 to-transparent flex items-center justify-center">
+          <span class="text-4xl drop-shadow-md">♟️</span>
+        </div>
+        <div class="pl-20">
+          <p class="font-display text-xl text-gray-200 tracking-wider">AJEDREZ: CLÁSICA</p>
+          <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Modo No Clasificado</p>
+          <div class="flex items-center gap-2 mt-2">
+            <div class="bg-cyan-900/50 px-2 py-1 rounded border border-cyan-800">
+              <p class="text-cyan-400 font-bold text-[10px] uppercase tracking-wider">Diversión Casual</p>
+              <p class="text-gray-500 text-[8px] uppercase">Sin Puntos de Rango</p>
+            </div>
+          </div>
+        </div>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzf4fAmNO1Mgn96pJN_v8qxGyc0L6qE41ZuGLS2OWLgG_kcKdFf0v_2bDAeqyhh-6MaGA/exec";
+  // ==========================================
+    // TRADUCTOR UNIVERSAL (Reemplaza google.script.run)
+    // ==========================================
+    function llamarAPI(nombreFuncion, argumentos, onSuccess, onError) {
+      fetch(API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Truco anti-CORS
+        body: JSON.stringify({ funcion: nombreFuncion, args: argumentos })
+      })
+      .then(function(respuesta) { return respuesta.json(); })
+      .then(function(resultado) {
+        if (resultado.exito) {
+          if (onSuccess) onSuccess(resultado.datos);
+        } else {
+          if (onError) onError(new Error(resultado.error));
+        }
+      })
+      .catch(function(error) {
+        console.error("Error en llamarAPI:", error);
+        if (onError) onError(error);
+      });
+    }
+    // ===================== ESTADO GLOBAL =====================
+    let mapaUsuarios = {};
+    let usuarioActual = null;
+    let comisionTransferencia = 0.02;
+
+    // ===================== UTILIDADES =====================
+    function formatGC(n) {
+      return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+    }
+    function formatFecha(iso) {
+      return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+    function iniciales(nombre) {
+      return (nombre || '?').split(' ').map(function (p) { return p[0]; }).slice(0, 2).join('').toUpperCase();
+    }
+    function nombreRol(rol) {
+      return { alumno: 'Alumno', docente: 'Docente', tesorero: 'Tesorero' }[rol] || rol;
+    }
+    function mostrarToast(mensaje, tipo) {
+      const t = document.getElementById('toast');
+      t.textContent = mensaje;
+      t.classList.remove('hidden', 'border-brick', 'border-celeste', 'text-ink');
+      t.classList.add(tipo === 'error' ? 'border-brick' : 'border-celeste');
+      t.classList.remove('hidden');
+      setTimeout(function () { t.classList.add('hidden'); }, 3200);
+    }
+    function abrirModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    document.querySelectorAll('[data-close-modal]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        cerrarModal('modalTransferir');
+        cerrarModal('modalEmitir');
+        cerrarModal('modalComprar');
+        cerrarModal('modalRangos');
+      });
+    });
+
+    // ========================== CARGA INICIAL ==========================
+window.addEventListener('load', function () {
+  
+  // 1. Cargar Usuarios desde la nueva API
+  fetch(API_URL + "?accion=obtenerUsuarios")
+    .then(function(respuesta) {
+      return respuesta.json();
+    })
+    .then(function(datos) {
+      cargarSelectorLogin(datos);
+    })
+    .catch(function(error) {
+      mostrarToast('Error cargando usuarios de la base de datos', 'error');
+      console.error(error);
+    });
+
+  // NOTA: Temporalmente desactivamos la carga de parámetros y rangos 
+  // hasta que confirmemos que la conexión base funciona.
+  /*
+  fetch(API_URL + "?accion=obtenerParametros")...
+  fetch(API_URL + "?accion=obtenerRangos")...
+  */
+});
+
+    function cargarSelectorLogin(usuarios) {
+      mapaUsuarios = usuarios || {};
+      
+      // BUSCAR SI HAY UNA SESIÓN GUARDADA EN EL NAVEGADOR
+      const uidGuardado = localStorage.getItem('grispay_session_uid');
+      
+      // Si existe y el usuario sigue activo en la base de datos, lo dejamos entrar directo
+      if (uidGuardado && mapaUsuarios[uidGuardado] && mapaUsuarios[uidGuardado].activo) {
+        ejecutarEntradaCorrecta(uidGuardado);
+      }
+    }
+
+    // ===================== LOGIN (SISTEMA SEGURO) =====================
+    let modoReclamo = false; 
+
+    function verificarUsuarioLogin() {
+      const username = document.getElementById('loginUsername').value.trim();
+      const passInput = document.getElementById('loginPassword').value;
+      const passContainer = document.getElementById('loginPasswordContainer');
+      const loading = document.getElementById('loginLoading');
+      const btn = document.getElementById('btnLoginAction');
+
+      if (!username) { mostrarToast('Escribe tu nombre de usuario', 'error'); return; }
+
+      loading.classList.remove('hidden');
+      btn.disabled = true;
+
+      // 1. Buscar si el usuario existe (ignorando mayúsculas)
+      const uid = Object.keys(mapaUsuarios).find(function(id) {
+        return mapaUsuarios[id].nombre.toLowerCase() === username.toLowerCase();
+      });
+      
+      if (!uid) {
+        loading.classList.add('hidden');
+        btn.disabled = false;
+        mostrarToast('Usuario no encontrado. Contacta al Tesorero.', 'error');
+        return;
+      }
+
+      const usuario = mapaUsuarios[uid];
+
+      // 2. Si el usuario existe pero no tiene contraseña (cuenta sin reclamar)
+      if (!usuario.password) {
+        if (!modoReclamo) {
+          loading.classList.add('hidden');
+          btn.disabled = false;
+          passContainer.classList.remove('hidden');
+          document.getElementById('loginPasswordAyuda').classList.remove('hidden');
+          btn.textContent = 'Crear Contraseña y Entrar';
+          modoReclamo = true;
+          mostrarToast('¡Cuenta nueva! Crea tu contraseña.', 'info');
+          return;
+        } else {
+          if (passInput.length < 4) {
+            loading.classList.add('hidden');
+            btn.disabled = false;
+            mostrarToast('Debe tener al menos 4 caracteres', 'error');
+            return;
+          }
+          llamarAPI(
+            'establecerContrasenaInicial',
+            [uid, passInput],
+            function() {
+              mapaUsuarios[uid].password = passInput; 
+              ejecutarEntradaCorrecta(uid);
+            },
+            function(err) {
+              loading.classList.add('hidden');
+              btn.disabled = false;
+              mostrarToast('Error al guardar: ' + err.message, 'error');
+            }
+          );
+          return;
+        }
+      }
+
+      // 3. Si ya tiene contraseña (login normal)
+      if (!modoReclamo && passContainer.classList.contains('hidden')) {
+        loading.classList.add('hidden');
+        btn.disabled = false;
+        passContainer.classList.remove('hidden');
+        document.getElementById('loginPasswordAyuda').classList.add('hidden');
+        btn.textContent = 'Entrar';
+        return;
+      }
+
+      if (usuario.password === passInput) {
+        ejecutarEntradaCorrecta(uid);
+      } else {
+        loading.classList.add('hidden');
+        btn.disabled = false;
+        mostrarToast('Contraseña incorrecta', 'error');
+      }
+    }
+
+    function ejecutarEntradaCorrecta(uid) {
+      // GUARDAMOS EL USUARIO EN LA MEMORIA DEL NAVEGADOR
+      localStorage.setItem('grispay_session_uid', uid);
+      
+      usuarioActual = Object.assign({ uid: uid }, mapaUsuarios[uid]);
+      document.getElementById('pantallaLogin').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('loginLoading').classList.add('hidden');
+      document.getElementById('btnLoginAction').disabled = false;
+
+      // Forzar a que la app arranque siempre en la pestaña Billetera
+      document.getElementById('tabBtnBilletera').click();
+      
+      // Mostrar paneles de herramientas según el rol
+      const panelAlumno = document.getElementById('panelServiciosAlumno');
+      const panelDocente = document.getElementById('panelServiciosDocente');
+      
+      if (panelAlumno) panelAlumno.classList.add('hidden');
+      if (panelDocente) panelDocente.classList.add('hidden');
+
+      if (usuarioActual.rol === 'alumno' && panelAlumno) {
+        panelAlumno.classList.remove('hidden');
+      } else if (usuarioActual.rol === 'docente' && panelDocente) {
+        panelDocente.classList.remove('hidden');
+      }
+
+      document.getElementById('avatarInicial').textContent = iniciales(usuarioActual.nombre);
+      document.getElementById('nombreUsuario').textContent = usuarioActual.nombre;
+      document.getElementById('rolUsuario').textContent = nombreRol(usuarioActual.rol);
+      actualizarPanelXP();
+
+      const btnEmitir = document.getElementById('btnAbrirEmitir');
+      if (usuarioActual.rol === 'docente' || usuarioActual.rol === 'tesorero') {
+        btnEmitir.classList.remove('hidden');
+      } else {
+        btnEmitir.classList.add('hidden');
+      }
+
+      verificarRolDocenteParaTienda(usuarioActual);
+      refrescarSaldo();
+      refrescarHistorial();
+      verificarRolTesorero();
+
+      // Lanzar animación de XP si es alumno
+      if (usuarioActual.rol === 'alumno') {
+        mostrarAnimacionXpLogin();
+      }
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', function () {
+      // DESTRUIMOS LA SESIÓN GUARDADA
+      localStorage.removeItem('grispay_session_uid');
+      
+      usuarioActual = null;
+      modoReclamo = false;
+      document.getElementById('loginUsername').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginPasswordContainer').classList.add('hidden');
+      document.getElementById('btnLoginAction').textContent = 'Continuar';
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('pantallaLogin').classList.remove('hidden');
+    });
+
+    /// ===================== SALDO =====================
+function refrescarSaldo() {
+  const rangoPrevio = usuarioActual.rango;
+  
+  llamarAPI(
+    'obtenerPerfilUsuario',  // 1. Nombre de la función en Code.gs
+    [usuarioActual.uid],     // 2. Argumentos que enviamos (el ID del usuario)
+    
+    // 3. Qué hacer si tiene éxito (Success Handler)
+    function (perfil) {
+      usuarioActual = Object.assign(usuarioActual, perfil);
+      document.getElementById('saldoUsuario').textContent = formatGC(perfil.saldo);
+      actualizarPanelXP();
+      
+      // MOSTRAR U OCULTAR DEUDA PARA TODOS
+      const zonaDeuda = document.getElementById('zonaDeudaPublica');
+      if (zonaDeuda) {
+        if (perfil.deuda && perfil.deuda > 0) {
+          zonaDeuda.classList.remove('hidden');
+          document.getElementById('montoDeuda').textContent = formatGC(perfil.deuda);
+          const tituloDeuda = zonaDeuda.querySelector('p');
+          if (tituloDeuda) tituloDeuda.textContent = perfil.rol === 'docente' ? 'Deuda Pública' : 'Deuda Bancaria';
+        } else {
+          zonaDeuda.classList.add('hidden');
+        }
+      }
+      
+      if (perfil.rango && rangoPrevio && perfil.rango !== rangoPrevio && perfil.rango !== "N/A") {
+         mostrarAnimacionSubidaRango(perfil.rango);
+      }
+    },
+    
+    // 4. Qué hacer si falla (Failure Handler)
+    function (err) { 
+      mostrarToast('Error al leer perfil: ' + err.message, 'error'); 
+    }
+  );
+}
+
+// ===================== HISTORIAL =====================
+    function refrescarHistorial() {
+      document.getElementById('historialCargando').classList.remove('hidden');
+      document.getElementById('historialVacio').classList.add('hidden');
+      document.getElementById('historialList').innerHTML = '';
+
+      llamarAPI(
+        'obtenerHistorialTransacciones', // 1. Nombre exacto de tu función en Code.gs
+        [usuarioActual.uid],             // 2. El argumento que enviamos (el ID)
+        renderHistorial,                 // 3. Qué hacer si tiene éxito
+        function (err) {                 // 4. Qué hacer si falla
+          mostrarToast('Error al leer historial: ' + err.message, 'error'); 
+        }
+      );
+    }
+
+    let historialCompletoCache = [];
+
+    function renderHistorial(historial, mostrarTodos = false) {
+      document.getElementById('historialCargando').classList.add('hidden');
+      const cont = document.getElementById('historialList');
+      const btnVerTodos = document.getElementById('btnVerTodosMovimientos');
+      cont.innerHTML = '';
+
+      // Guardar el historial en caché si se recibe de la base de datos
+      if (historial) historialCompletoCache = historial;
+
+      if (!historialCompletoCache || historialCompletoCache.length === 0) {
+        document.getElementById('historialVacio').classList.remove('hidden');
+        if (btnVerTodos) btnVerTodos.classList.add('hidden');
+        return;
+      }
+
+      // Filtrar a los últimos 10 si "mostrarTodos" es falso
+      const limite = mostrarTodos ? historialCompletoCache.length : 10;
+      const movimientosAMostrar = historialCompletoCache.slice(0, limite);
+
+      movimientosAMostrar.forEach(function (tx) {
+        const esIngreso = tx.receptorUID === usuarioActual.uid;
+        const contraparteUID = esIngreso ? tx.emisorUID : tx.receptorUID;
+        const contraparte = mapaUsuarios[contraparteUID] ? mapaUsuarios[contraparteUID].nombre : 'Usuario';
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-bg border border-borderc rounded-2xl px-4 py-3';
+        row.innerHTML =
+          '<div class="flex items-center gap-3">' +
+            '<div class="w-10 h-10 rounded-full flex items-center justify-center ' + (esIngreso ? 'bg-celeste/20 text-celestedark' : 'bg-brick/10 text-brick') + '">' +
+              (esIngreso
+                ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7 7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+            '</div>' +
+            '<div>' +
+              '<p class="text-sm font-bold text-ink">' + (tx.concepto || (tx.tipo === 'emision' ? 'Premio recibido' : 'Transferencia')) + '</p>' +
+              '<p class="text-xs text-inkmuted font-medium">' + (esIngreso ? 'De ' : 'A ') + contraparte + ' · ' + formatFecha(tx.fecha) + '</p>' +
+            '</div>' +
+          '</div>' +
+          '<p class="font-mono font-bold text-sm ' + (esIngreso ? 'text-celestedark' : 'text-brick') + '">' + (esIngreso ? '+' : '-') + formatGC(tx.monto) + '</p>';
+        cont.appendChild(row);
+      });
+
+      // Encender o apagar el botón de "Ver todos"
+      if (btnVerTodos) {
+        if (historialCompletoCache.length > 10 && !mostrarTodos) {
+          btnVerTodos.classList.remove('hidden');
+        } else {
+          btnVerTodos.classList.add('hidden');
+        }
+      }
+    }
+
+    // Activar el botón de Ver Todos los movimientos
+    document.addEventListener('click', function(e) {
+      if (e.target && e.target.id === 'btnVerTodosMovimientos') {
+        renderHistorial(null, true);
+      }
+    });
+
+    document.getElementById('btnRefrescar').addEventListener('click', function () {
+      refrescarSaldo();
+      refrescarHistorial();
+    });
+
+    // ===================== MODAL TRANSFERIR =====================
+    document.getElementById('btnAbrirTransferir').addEventListener('click', function () {
+      const select = document.getElementById('selectDestinatario');
+      select.innerHTML = '';
+      Object.keys(mapaUsuarios).forEach(function (uid) {
+        const u = mapaUsuarios[uid];
+        if (u.rol === 'alumno' && uid !== usuarioActual.uid && u.activo) {
+          const opt = document.createElement('option');
+          opt.value = uid;
+          opt.textContent = u.nombre;
+          select.appendChild(opt);
+        }
+      });
+      document.getElementById('inputMontoTransferir').value = '';
+      document.getElementById('previewComision').textContent = '';
+      document.getElementById('errorTransferir').classList.add('hidden');
+      abrirModal('modalTransferir');
+    });
+
+    document.getElementById('inputMontoTransferir').addEventListener('input', function () {
+      const monto = parseFloat(this.value) || 0;
+      const comision = Math.round(monto * comisionTransferencia * 100) / 100;
+      const preview = document.getElementById('previewComision');
+      if (monto > 0) {
+        preview.textContent = 'Comisión: ' + formatGC(comision) + ' GC · Se debitarán ' + formatGC(monto + comision) + ' GC en total';
+      } else {
+        preview.textContent = '';
+      }
+    });
+
+    document.getElementById('btnConfirmarTransferir').addEventListener('click', function () {
+      const destino = document.getElementById('selectDestinatario').value;
+      const monto = parseFloat(document.getElementById('inputMontoTransferir').value);
+      const errorEl = document.getElementById('errorTransferir');
+      errorEl.classList.add('hidden');
+
+      if (!destino) { errorEl.textContent = 'Elegí un destinatario.'; errorEl.classList.remove('hidden'); return; }
+      if (!monto || monto <= 0) { errorEl.textContent = 'Ingresá un monto válido.'; errorEl.classList.remove('hidden'); return; }
+
+      const boton = document.getElementById('btnConfirmarTransferir');
+      boton.disabled = true;
+      boton.textContent = 'Procesando...';
+
+      llamarAPI(
+        'realizarTransferencia',
+        [usuarioActual.uid, destino, monto],
+        function () {
+          boton.disabled = false;
+          boton.textContent = 'Enviar GrisCoins';
+          cerrarModal('modalTransferir');
+          mostrarToast('Transferencia realizada con éxito');
+          refrescarSaldo();
+          refrescarHistorial();
+        },
+        function (err) {
+          boton.disabled = false;
+          boton.textContent = 'Enviar GrisCoins';
+          errorEl.textContent = err.message;
+          errorEl.classList.remove('hidden');
+        }
+      );
+    });
+
+    // ===================== MODAL EMITIR =====================
+    document.getElementById('btnAbrirEmitir').addEventListener('click', function () {
+      const select = document.getElementById('selectAlumnoEmitir');
+      select.innerHTML = '';
+      Object.keys(mapaUsuarios).forEach(function (uid) {
+        const u = mapaUsuarios[uid];
+        if (u.rol === 'alumno' && u.activo) {
+          const opt = document.createElement('option');
+          opt.value = uid;
+          opt.textContent = u.nombre;
+          select.appendChild(opt);
+        }
+      });
+      document.getElementById('inputMontoEmitir').value = '';
+      document.getElementById('inputConceptoEmitir').value = '';
+      document.getElementById('errorEmitir').classList.add('hidden');
+      abrirModal('modalEmitir');
+    });
+
+    // ===================== XP Y RANGOS =====================
+    let tablaRangos = [];
+
+    function formatXP(n) {
+      return new Intl.NumberFormat('es-AR').format(n || 0);
+    }
+
+    function obtenerRangoPorXPCliente(xp) {
+      for (let i = tablaRangos.length - 1; i >= 0; i--) {
+        if (xp >= tablaRangos[i].xpMin) return tablaRangos[i];
+      }
+      return tablaRangos[0];
+    }
+
+    function actualizarPanelXP() {
+      const esAlumno = usuarioActual.rol === 'alumno';
+      const zonaProgreso = document.getElementById('zonaProgresoXp');
+
+      if (!esAlumno || tablaRangos.length === 0) {
+        document.getElementById('iconoRango').textContent = '';
+        document.getElementById('badgeRango').textContent = nombreRol(usuarioActual.rol);
+        zonaProgreso.classList.add('hidden');
+        return;
+      }
+
+      zonaProgreso.classList.remove('hidden');
+      const xp = usuarioActual.xp || 0;
+      const rangoActual = obtenerRangoPorXPCliente(xp);
+      const idx = tablaRangos.findIndex(function (r) { return r.nombre === rangoActual.nombre; });
+      const siguienteRango = tablaRangos[idx + 1];
+
+      document.getElementById('iconoRango').textContent = rangoActual.icono;
+      document.getElementById('badgeRango').textContent = rangoActual.nombre;
+
+      const barra = document.getElementById('barraXp');
+      const texto = document.getElementById('textoXp');
+
+      if (!siguienteRango) {
+        barra.style.width = '100%';
+        texto.textContent = formatXP(xp) + ' XP · Rango máximo alcanzado';
+        return;
+      }
+
+      const xpDesdeInicioRango = xp - rangoActual.xpMin;
+      const xpNecesarioParaSiguiente = siguienteRango.xpMin - rangoActual.xpMin;
+      const pct = Math.min(100, Math.round((xpDesdeInicioRango / xpNecesarioParaSiguiente) * 100));
+
+      barra.style.width = pct + '%';
+      texto.textContent = formatXP(xp) + ' / ' + formatXP(siguienteRango.xpMin) + ' XP para ' + siguienteRango.nombre;
+    }
+
+    function renderModalRangos() {
+      const cont = document.getElementById('listaRangos');
+      cont.innerHTML = '';
+      const xpActual = usuarioActual.xp || 0;
+      const esAlumno = usuarioActual.rol === 'alumno';
+      const rangoActualNombre = esAlumno ? obtenerRangoPorXPCliente(xpActual).nombre : null;
+
+      tablaRangos.forEach(function (r) {
+        const esActual = r.nombre === rangoActualNombre;
+        const row = document.createElement('div');
+        row.className = 'flex gap-3 rounded-2xl p-4 mb-3 border shadow-sm ' + (esActual ? 'border-celeste bg-surface' : 'border-borderc bg-bg');
+        row.innerHTML =
+          '<div class="text-3xl mt-1">' + r.icono + '</div>' +
+          '<div class="flex-1">' +
+            '<div class="flex items-center justify-between">' +
+              '<p class="text-sm font-bold text-ink">' + r.nombre + '</p>' +
+              (esActual ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-celeste text-surface font-bold">ACTUAL</span>' : '') +
+            '</div>' +
+            '<p class="text-xs text-celestedark font-mono font-bold mt-0.5">' + formatXP(r.xpMin) + (r.xpMax ? ' - ' + formatXP(r.xpMax) : '+') + ' XP</p>' +
+            '<p class="text-xs text-inkmuted font-medium mt-1 leading-snug">' + r.privilegios + '</p>' +
+          '</div>';
+        cont.appendChild(row);
+      });
+    }
+
+    document.getElementById('btnVerRangos').addEventListener('click', function () {
+      renderModalRangos();
+      abrirModal('modalRangos');
+    });
+
+// ===================== TABS =====================
+    let productosCache = null;
+    let productoSeleccionadoId = null;
+
+    // --- BOTÓN BILLETERA ---
+    document.getElementById('tabBtnBilletera').addEventListener('click', function () {
+      document.getElementById('tabBilletera').classList.remove('hidden');
+      document.getElementById('tabTienda').classList.add('hidden');
+      document.getElementById('tabBanco').classList.add('hidden');
+
+      this.classList.add('bg-celeste', 'text-surface');
+      this.classList.remove('text-inkmuted');
+
+      document.getElementById('tabBtnTienda').classList.remove('bg-celeste', 'text-surface');
+      document.getElementById('tabBtnTienda').classList.add('text-inkmuted');
+      document.getElementById('tabBtnBanco').classList.remove('bg-celeste', 'text-surface');
+      document.getElementById('tabBtnBanco').classList.add('text-inkmuted');
+    });
+
+    // --- BOTÓN TIENDA ---
+    document.getElementById('tabBtnTienda').addEventListener('click', function () {
+      document.getElementById('tabTienda').classList.remove('hidden');
+      document.getElementById('tabBilletera').classList.add('hidden');
+      document.getElementById('tabBanco').classList.add('hidden');
+
+      this.classList.add('bg-celeste', 'text-surface');
+      this.classList.remove('text-inkmuted');
+
+      document.getElementById('tabBtnBilletera').classList.remove('bg-celeste', 'text-surface');
+      document.getElementById('tabBtnBilletera').classList.add('text-inkmuted');
+      document.getElementById('tabBtnBanco').classList.remove('bg-celeste', 'text-surface');
+      document.getElementById('tabBtnBanco').classList.add('text-inkmuted');
+      
+      cargarProductos();
+    });
+
+    // --- BOTÓN BANCO ---
+    document.getElementById('tabBtnBanco').addEventListener('click', function () {
+      document.getElementById('tabBanco').classList.remove('hidden');
+      document.getElementById('tabBilletera').classList.add('hidden');
+      document.getElementById('tabTienda').classList.add('hidden');
+
+      this.classList.add('bg-celeste', 'text-surface');
+      this.classList.remove('text-inkmuted');
+
+      document.getElementById('tabBtnBilletera').classList.remove('bg-celeste', 'text-surface');
+      document.getElementById('tabBtnBilletera').classList.add('text-inkmuted');
+      document.getElementById('tabBtnTienda').classList.remove('bg-celeste', 'text-surface');
+      document.getElementById('tabBtnTienda').classList.add('text-inkmuted');
+
+      cargarDatosBanco();
+    });
+
+    // ===================== TIENDA =====================
+function cargarProductos() {
+      document.getElementById('tiendaCargando').classList.remove('hidden');
+      document.getElementById('tiendaVacia').classList.add('hidden');
+      document.getElementById('tiendaGrid').innerHTML = '';
+
+      llamarAPI(
+        'obtenerProductos',
+        [],
+        renderProductos,
+        function (err) { mostrarToast('Error al cargar la tienda: ' + err.message, 'error'); }
+      );
+    }
+
+    function renderProductos(productos) {
+      productosCache = productos || {};
+      document.getElementById('tiendaCargando').classList.add('hidden');
+      const grid = document.getElementById('tiendaGrid');
+      grid.innerHTML = '';
+
+      const ids = Object.keys(productosCache);
+      if (ids.length === 0) {
+        document.getElementById('tiendaVacia').classList.remove('hidden');
+        return;
+      }
+
+      ids.forEach(function (id) {
+        const p = productosCache[id];
+        const agotado = p.stock <= 0;
+
+        const card = document.createElement('div');
+        card.className = 'bg-surface border border-borderc rounded-3xl p-4 flex flex-col items-center text-center shadow-sm relative overflow-hidden';
+        
+        const imagenHTML = p.fotoUrl 
+          ? '<img src="' + p.fotoUrl + '" class="h-16 w-auto object-contain mb-3 mt-2 drop-shadow-md">' 
+          : '<div class="text-5xl mb-3 mt-2">' + (p.icono || '') + '</div>';
+
+        // Etiqueta de inflación (Visible solo para Docente o Tesorero si hay inflación)
+        let badgeInflacion = '';
+        if ((usuarioActual.rol === 'docente' || usuarioActual.rol === 'tesorero') && p.inflacionActual !== undefined && p.inflacionActual !== 0) {
+           const colorInt = p.inflacionActual > 0 ? 'text-brick bg-brick/10' : 'text-emerald-600 bg-emerald-100';
+           const signo = p.inflacionActual > 0 ? '+' : '';
+           badgeInflacion = '<span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-lg ' + colorInt + '">' + signo + p.inflacionActual.toFixed(1) + '% INDEC</span>';
+        }
+
+        card.innerHTML = 
+          badgeInflacion +
+          '<button data-id="' + id + '" class="btn-editar-prod absolute top-2 right-2 bg-gray-100 hover:bg-gray-200 text-gray-700 p-1.5 rounded-full text-xs hidden shadow-sm" onclick="abrirModalEditar(\'' + id + '\')">✏️</button>' +
+          imagenHTML +
+          '<p class="text-sm font-bold text-ink mb-1 leading-tight">' + p.nombre + '</p>' +
+          '<p class="text-[10px] uppercase font-bold text-inkmuted mb-2">' + p.categoria + '</p>' +
+          '<p class="font-mono text-gold font-bold text-lg mb-1">' + formatGC(p.precioFinal) + ' GC</p>' +
+          '<p class="text-xs font-semibold ' + (agotado ? 'text-brick' : 'text-celestedark') + ' mb-4">' + (agotado ? 'Agotado' : p.stock + ' disponibles') + '</p>' +
+          '<button data-id="' + id + '" class="btn-comprar w-full text-sm font-bold rounded-xl py-3 shadow-sm ' +
+            (agotado ? 'bg-bg text-inkmuted border border-borderc' : 'bg-gold text-surface active:scale-[0.98] transition-transform') + '"' +
+            (agotado ? ' disabled' : '') + '>' + (agotado ? 'Sin stock' : 'Comprar') + '</button>';
+        
+        grid.appendChild(card);
+      });
+
+      document.querySelectorAll('.btn-comprar').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          abrirModalCompra(this.getAttribute('data-id'));
+        });
+      });
+
+      // ¡Esta es la línea clave! Destapa los lápices recién creados si el usuario es Docente
+      verificarRolDocenteParaTienda(usuarioActual);
+    }
+
+    function abrirModalCompra(productoId) {
+      const p = productosCache[productoId];
+      productoSeleccionadoId = productoId;
+
+      const previewIcono = document.getElementById('compraIconoPreview');
+  if (p.fotoUrl) {
+    previewIcono.innerHTML = '<img src="' + p.fotoUrl + '" class="h-20 w-auto object-contain mx-auto drop-shadow-md">';
+  } else {
+    previewIcono.textContent = p.icono || '';
+  }
+  
+  document.getElementById('compraNombrePreview').textContent = p.nombre;
+  document.getElementById('compraPrecioPreview').textContent = formatGC(p.precioFinal) + ' GC';
+      document.getElementById('errorComprar').classList.add('hidden');
+
+      abrirModal('modalComprar');
+    }
+
+    document.getElementById('btnConfirmarCompra').addEventListener('click', function () {
+      const errorEl = document.getElementById('errorComprar');
+      errorEl.classList.add('hidden');
+
+      const boton = this;
+      boton.disabled = true;
+      boton.textContent = 'Procesando...';
+
+      llamarAPI(
+        'comprarProducto',
+        [usuarioActual.uid, productoSeleccionadoId],
+        function () {
+          boton.disabled = false;
+          boton.textContent = 'Confirmar compra';
+          cerrarModal('modalComprar');
+          mostrarToast('¡Compra realizada con éxito!');
+          refrescarSaldo();
+          cargarProductos();
+        },
+        function (err) {
+          boton.disabled = false;
+          boton.textContent = 'Confirmar compra';
+          errorEl.textContent = err.message;
+          errorEl.classList.remove('hidden');
+        }
+      );
+    });
+
+    // Función para mostrar/ocultar el input personalizado
+    function verificarTareaPersonalizada() {
+      const select = document.getElementById('selectTipoTarea').value;
+      const contenedor = document.getElementById('contenedorTareaPersonalizada');
+      if (select === 'Otro') contenedor.classList.remove('hidden');
+      else contenedor.classList.add('hidden');
+    }
+
+    document.getElementById('btnConfirmarEmitir').addEventListener('click', function () {
+      const alumno = document.getElementById('selectAlumnoEmitir').value;
+      const monto = parseFloat(document.getElementById('inputMontoEmitir').value);
+      const tareaBase = document.getElementById('selectTipoTarea').value;
+      const dificultad = document.getElementById('selectDificultadTarea').value;
+      const tareaCustom = document.getElementById('inputTareaPersonalizada').value.trim();
+      const errorEl = document.getElementById('errorEmitir');
+      
+      errorEl.classList.add('hidden');
+
+      if (!alumno) { errorEl.textContent = 'Elegí un alumno.'; errorEl.classList.remove('hidden'); return; }
+      if (!monto || monto <= 0) { errorEl.textContent = 'Ingresá un monto válido en GC.'; errorEl.classList.remove('hidden'); return; }
+      if (tareaBase === 'Otro' && !tareaCustom) { errorEl.textContent = 'Describe la nueva actividad.'; errorEl.classList.remove('hidden'); return; }
+
+      // Armamos el concepto oficial
+      const conceptoFinal = (tareaBase === 'Otro' ? tareaCustom : tareaBase) + ' (' + dificultad + ')';
+
+      const boton = document.getElementById('btnConfirmarEmitir');
+      boton.disabled = true;
+      boton.textContent = 'Calculando XP...';
+
+      llamarAPI(
+        'emitirDineroDocente',
+        [usuarioActual.uid, alumno, monto, conceptoFinal, dificultad],
+        function () {
+          boton.disabled = false;
+          boton.textContent = 'Otorgar Premio';
+          cerrarModal('modalEmitir');
+          mostrarToast('Premio otorgado con éxito');
+          refrescarSaldo();
+          refrescarHistorial();
+        },
+        function (err) {
+          boton.disabled = false;
+          boton.textContent = 'Otorgar Premio';
+          errorEl.textContent = err.message;
+          errorEl.classList.remove('hidden');
+        }
+      );
+    });
+
+    // ===================== SISTEMA DE ANIMACIÓN ÉPICA =====================
+    // Aquí pondremos los links a tus videos reales luego. Por ahora usamos uno genérico de prueba.
+    const VIDEOS_RANGOS = {
+      "Peón de Leva": "https://www.w3schools.com/html/mov_bbb.mp4", 
+      "Escudero de Armas": "https://www.w3schools.com/html/mov_bbb.mp4",
+      "Caballero del Tablero": "https://www.w3schools.com/html/mov_bbb.mp4",
+      "Guardián de la Torre": "https://www.w3schools.com/html/mov_bbb.mp4",
+      "Alfil del Cónclave": "https://www.w3schools.com/html/mov_bbb.mp4",
+      "Mariscal del Reino": "https://www.w3schools.com/html/mov_bbb.mp4",
+      "Gran Maestre de la Orden": "https://www.w3schools.com/html/mov_bbb.mp4"
+    };
+
+    function mostrarAnimacionSubidaRango(nombreRango) {
+      const modal = document.getElementById('modalLevelUp');
+      const video = document.getElementById('videoLevelUp');
+      const titulo = document.getElementById('tituloLevelUp');
+      const privilegio = document.getElementById('privilegioLevelUp');
+      const btnBtn = document.getElementById('btnContinuarLevelUp');
+      
+      // Buscar qué privilegios tiene este rango
+      const datosRango = tablaRangos.find(function(r) { return r.nombre === nombreRango; }) || {};
+
+      // Configurar el texto
+      titulo.textContent = '¡' + nombreRango + '!';
+      privilegio.textContent = datosRango.privilegios || '';
+      
+      // Ocultar elementos para hacer la entrada épica
+      titulo.classList.remove('opacity-100'); titulo.classList.add('opacity-0');
+      privilegio.classList.remove('opacity-100'); privilegio.classList.add('opacity-0');
+      btnBtn.classList.remove('opacity-100'); btnBtn.classList.add('opacity-0', 'pointer-events-none');
+
+      // Cargar el video correspondiente
+      video.src = VIDEOS_RANGOS[nombreRango] || VIDEOS_RANGOS["Peón de Leva"];
+      video.currentTime = 0;
+      
+      // TRUCO DEL BUCLE (LOOP) DEL 59 al 10
+      video.ontimeupdate = function() {
+        if (video.currentTime >= 59) {
+          video.currentTime = 10;
+          video.play();
+        }
+      };
+
+      // Mostrar el modal y darle play al video
+      modal.classList.remove('hidden');
+      video.play().catch(function(e) { console.log("Reproducción automática bloqueada", e); });
+
+      // Hacer aparecer los textos escalonadamente
+      setTimeout(function() {
+        titulo.classList.remove('opacity-0'); titulo.classList.add('opacity-100');
+      }, 1500); // El título aparece al segundo 1.5
+
+      setTimeout(function() {
+        privilegio.classList.remove('opacity-0'); privilegio.classList.add('opacity-100');
+      }, 2500); // El texto aparece al segundo 2.5
+
+      setTimeout(function() {
+        btnBtn.classList.remove('opacity-0', 'pointer-events-none'); btnBtn.classList.add('opacity-100');
+      }, 5000); // El botón de "Aceptar Rango" aparece a los 5 segundos
+    }
+
+    // Cerrar el modal épico
+    document.getElementById('btnContinuarLevelUp').addEventListener('click', function() {
+      const modal = document.getElementById('modalLevelUp');
+      const video = document.getElementById('videoLevelUp');
+      video.pause();
+      modal.classList.add('hidden');
+    });
+    // ==========================================
+// FUNCIONES DEL PANEL DOCENTE (KIOSCO)
+// ==========================================
+
+// Abrir/Cerrar Modal
+function abrirModalCrearProducto() {
+  document.getElementById('modalCrearProducto').classList.remove('hidden');
+}
+
+function cerrarModalCrearProducto() {
+  document.getElementById('modalCrearProducto').classList.add('hidden');
+  document.getElementById('formCrearProducto').reset();
+}
+
+// Convertir archivo a Base64 y enviar al backend
+function guardarNuevoProducto(e) {
+  e.preventDefault();
+  
+  const fileInput = document.getElementById('prodFoto');
+  const file = fileInput.files[0];
+  if (!file) return alert("Por favor selecciona una imagen.");
+
+  const btn = document.getElementById('btnGuardarProd');
+  btn.disabled = true;
+  btn.innerText = "Subiendo...";
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const base64Data = evt.target.result;
+    
+    const datosProducto = {
+      titulo: document.getElementById('prodTitulo').value,
+      subtitulo: document.getElementById('prodSubtitulo').value,
+      precio: document.getElementById('prodPrecio').value,
+      stock: document.getElementById('prodStock').value
+    };
+
+    llamarAPI(
+      'crearProductoConImagen',
+      [datosProducto, base64Data, file.type, file.name],
+      function(res) {
+        btn.disabled = false;
+        btn.innerText = "Guardar";
+        cerrarModalCrearProducto();
+        alert("¡Producto añadido con éxito al Kiosco!");
+        if (typeof cargarProductos === 'function') cargarProductos(); 
+      },
+      function(err) {
+        btn.disabled = false;
+        btn.innerText = "Guardar";
+        alert("Error: " + err.message);
+      }
+    );
+  };
+
+  reader.readAsDataURL(file);
+}
+
+// Mostrar botón solo si el usuario es Docente
+function verificarRolDocenteParaTienda(usuario) {
+  if (usuario && usuario.rol === 'docente') {
+    document.getElementById('contenedorBotonCrearProducto').classList.remove('hidden');
+    document.querySelectorAll('.btn-editar-prod').forEach(function(btn) {
+      btn.classList.remove('hidden');
+    });
+  }
+}
+function abrirModalEditar(id) {
+  const p = productosCache[id];
+  if (!p) return;
+
+  document.getElementById('editProdId').value = id;
+  document.getElementById('editProdTitulo').value = p.nombre || '';
+  document.getElementById('editProdSubtitulo').value = p.categoria || '';
+  document.getElementById('editProdPrecio').value = p.precioFinal !== undefined ? p.precioFinal : 0;
+  document.getElementById('editProdStock').value = p.stock || 0;
+  document.getElementById('editFotoUrlExistente').value = p.fotoUrl || '';
+  document.getElementById('editDriveFileIdExistente').value = p.driveFileId || '';
+  document.getElementById('editIconoExistente').value = p.icono || '';
+
+  // Mostrar vista previa actual
+  const preview = document.getElementById('editFotoPreview');
+  if (p.fotoUrl) {
+    preview.innerHTML = '<img src="' + p.fotoUrl + '" class="h-16 w-auto object-contain rounded-lg border p-1">';
+  } else {
+    preview.innerHTML = '<span class="text-4xl">' + (p.icono || '📦') + '</span>';
+  }
+
+  document.getElementById('editProdFoto').value = '';
+  document.getElementById('modalEditarProducto').classList.remove('hidden');
+}
+
+function cerrarModalEditarProducto() {
+  document.getElementById('modalEditarProducto').classList.add('hidden');
+}
+
+function guardarEdicionProducto() {
+  const id = document.getElementById('editProdId').value;
+  const titulo = document.getElementById('editProdTitulo').value;
+  const subtitulo = document.getElementById('editProdSubtitulo').value;
+  const precio = document.getElementById('editProdPrecio').value;
+  const stock = document.getElementById('editProdStock').value;
+  const fotoInput = document.getElementById('editProdFoto');
+
+  if (!titulo) return alert("Por favor ingresa un título para el producto.");
+
+  const btn = document.getElementById('btnGuardarEditProd');
+  btn.disabled = true;
+  btn.innerText = "Guardando...";
+
+  const datosProducto = {
+    titulo: titulo,
+    subtitulo: subtitulo,
+    precio: precio,
+    stock: stock,
+    fotoUrlExistente: document.getElementById('editFotoUrlExistente').value,
+    driveFileIdExistente: document.getElementById('editDriveFileIdExistente').value,
+    iconoExistente: document.getElementById('editIconoExistente').value
+  };
+
+  // Si eligió una nueva foto la procesamos
+  if (fotoInput.files && fotoInput.files[0]) {
+    const file = fotoInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      enviarEdicion(id, datosProducto, evt.target.result, file.type, file.name);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Si no cambió la foto, enviamos vacío la imagen nueva
+    enviarEdicion(id, datosProducto, "", "", "");
+  }
+}
+
+function enviarEdicion(id, datosProducto, base64Data, mimeType, fileName) {
+  const btn = document.getElementById('btnGuardarEditProd');
+  llamarAPI(
+    'editarProductoConImagen',
+    [id, datosProducto, base64Data, mimeType, fileName],
+    function(res) {
+      btn.disabled = false;
+      btn.innerText = "Guardar Cambios";
+      cerrarModalEditarProducto();
+      alert("¡Producto actualizado con éxito!");
+      if (typeof cargarProductos === 'function') cargarProductos();
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerText = "Guardar Cambios";
+      alert("Error al actualizar el producto: " + err.message);
+    }
+  );
+}
+
+// --- LÓGICA DEL BLACKY BANK ---
+
+// Habilitar la pestaña si es Tesorero (agregar esto dentro de iniciarSesionUI)
+function verificarRolTesorero() {
+  if (usuarioActual && usuarioActual.rol === 'tesorero') {
+    document.getElementById('tabBtnBanco').classList.remove('hidden');
+  } else {
+    document.getElementById('tabBtnBanco').classList.add('hidden'); // Apaga el botón para el resto
+  }
+}
+
+
+
+// Variable global para recordar cómo está programado el reloj
+window.configCierreActual = null;
+
+function cargarDatosBanco() {
+  llamarAPI(
+    'obtenerDatosBanco',
+    [],
+    function (datos) {
+      document.getElementById('bancoMasaMonetaria').textContent = formatGC(datos.masaMonetaria);
+      document.getElementById('bancoValorKiosco').textContent = formatGC(datos.valorKiosco) + ' GC';
+      document.getElementById('bancoGastoPublico').textContent = formatGC(datos.emisionSemanal) + ' GC';
+      
+      const badge = document.getElementById('badgeEstadoInflacion');
+      const alerta = document.getElementById('bancoAlertaInflacion');
+      const txtActual = document.getElementById('bancoInflacionActual');
+      const txtProyectada = document.getElementById('bancoInflacionProyectada');
+
+      if (datos.inflacionActiva) {
+        badge.textContent = 'ACTIVA';
+        badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-brick/10 text-brick';
+        
+        txtActual.textContent = datos.inflacionOficial.toFixed(1) + '%';
+        txtProyectada.textContent = datos.inflacionProyectada.toFixed(1) + '%';
+        
+        if (datos.inflacionOficial > 50) txtActual.className = 'font-display text-2xl text-brick leading-none';
+        else if (datos.inflacionOficial > 15) txtActual.className = 'font-display text-2xl text-gold leading-none';
+        else txtActual.className = 'font-display text-2xl text-emerald-600 leading-none';
+
+        if (datos.inflacionProyectada > datos.inflacionOficial + 20) {
+          alerta.textContent = '⚠️ ALERTA: Fuerte emisión detectada. El próximo cierre disparará los precios.';
+          alerta.className = 'text-xs mt-3 font-bold text-brick border-t border-borderc pt-2';
+        } else {
+          alerta.textContent = 'Economía en curso. Pendiente de próximo cierre INDEC.';
+          alerta.className = 'text-xs mt-3 font-medium text-emerald-600 border-t border-borderc pt-2';
+        }
+      } else {
+        badge.textContent = 'APAGADA';
+        badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500';
+        txtActual.textContent = '0.0%';
+        txtProyectada.textContent = '0.0%';
+        alerta.textContent = 'Inicia el sistema inflacionario desde la consola.';
+      }
+      
+      const select = document.getElementById('selectBeneficiarioBanco');
+      if(select) {
+        select.innerHTML = '';
+        Object.keys(datos.usuarios).forEach(function(uid) {
+          const u = datos.usuarios[uid];
+          if (u.activo && u.rol !== 'tesorero') {
+            const opt = document.createElement('option');
+            opt.value = uid;
+            opt.textContent = u.nombre + ' (' + nombreRol(u.rol) + ')';
+            select.appendChild(opt);
+          }
+        });
+      }
+
+      // Guardamos la configuración automática en memoria
+      window.configCierreActual = {
+        activo: datos.cierreAutoActivo,
+        dia: datos.cierreAutoDia,
+        hora: datos.cierreAutoHora
+      };
+    },
+    function (err) { mostrarToast('Error del Banco: ' + err.message, 'error'); }
+  );
+}
+
+function abrirModalCierre() {
+  document.getElementById('modalCierreIndec').classList.remove('hidden');
+  
+  // Llenar selector de horas si está vacío
+  const selectHora = document.getElementById('selectHoraCierre');
+  if (selectHora.options.length === 0) {
+    for(let i = 0; i <= 23; i++) {
+      let opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = i + ':00 hs';
+      selectHora.appendChild(opt);
+    }
+  }
+
+  // Pre-cargar la configuración actual guardada
+  if (window.configCierreActual) {
+    document.getElementById('selectDiaCierre').value = window.configCierreActual.dia;
+    document.getElementById('selectHoraCierre').value = window.configCierreActual.hora;
+    if (window.configCierreActual.activo) {
+      document.getElementById('btnDesactivarAutoCierre').classList.remove('hidden');
+    } else {
+      document.getElementById('btnDesactivarAutoCierre').classList.add('hidden');
+    }
+  }
+}
+
+function ejecutarCierreSemanalManual() {
+  if (!confirm("¿Estás seguro de cerrar el período AHORA? Los precios de la tienda se actualizarán inmediatamente.")) return;
+  
+  cerrarModal('modalCierreIndec');
+  mostrarToast("Calculando reporte INDEC...", "info");
+  
+  llamarAPI(
+    'cerrarPeriodoEconomico',
+    [],
+    function(res) {
+      mostrarToast("Período cerrado con inflación del " + res.inflacionDelPeriodo.toFixed(1) + "%");
+      cargarDatosBanco();
+      cargarProductos();
+    },
+    function(err) { 
+      alert("Error: " + err.message); 
+    }
+  );
+}
+
+function guardarProgramacionCierre() {
+  const dia = document.getElementById('selectDiaCierre').value;
+  const hora = document.getElementById('selectHoraCierre').value;
+  const btn = document.getElementById('btnGuardarAutoCierre');
+  
+  btn.disabled = true; 
+  btn.textContent = "Guardando...";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled = false; 
+      btn.textContent = "Programar Reloj";
+      mostrarToast("¡Cierre automático programado con éxito!");
+      document.getElementById('btnDesactivarAutoCierre').classList.remove('hidden');
+      cerrarModal('modalCierreIndec');
+      cargarDatosBanco(); 
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false; 
+      btn.textContent = "Programar Reloj";
+      alert("Error: " + err.message);
+    })
+    .programarCierreAutomatico(parseInt(dia), parseInt(hora));
+}
+
+function desactivarProgramacionCierre() {
+   const btn = document.getElementById('btnDesactivarAutoCierre');
+   btn.disabled = true;
+
+   google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled = false;
+      btn.classList.add('hidden');
+      mostrarToast("Automatización desactivada. Volviste a modo Manual.");
+      cerrarModal('modalCierreIndec');
+      cargarDatosBanco();
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false;
+      alert("Error: " + err.message);
+    })
+    .programarCierreAutomatico(null, null);
+}
+
+function abrirModalEmitirBanco() {
+  document.getElementById('inputMontoBanco').value = '';
+  document.getElementById('inputConceptoBanco').value = '';
+  document.getElementById('modalEmitirBanco').classList.remove('hidden');
+}
+
+// ===================== PRÉSTAMOS DE GOBIERNO =====================
+function abrirModalPrestamoGobierno() {
+  document.getElementById('inputMontoPrestamo').value = '';
+  document.getElementById('modalPrestamoGobierno').classList.remove('hidden');
+}
+
+function ejecutarSolicitudPrestamo() {
+  const monto = parseFloat(document.getElementById('inputMontoPrestamo').value);
+  if (!monto || monto <= 0) return mostrarToast("Ingresa un monto válido", "error");
+
+  const btn = document.getElementById('btnConfirmarPrestamo');
+  btn.disabled = true;
+  btn.innerText = "Procesando...";
+
+  llamarAPI(
+    'otorgarPrestamoGobierno',
+    [usuarioActual.uid, monto],
+    function(res) {
+      btn.disabled = false;
+      btn.innerText = "Enviar Solicitud";
+      cerrarModal('modalPrestamoGobierno');
+      mostrarToast("¡Fondo de " + monto + " GC acreditado!", "info");
+      refrescarSaldo();
+      refrescarHistorial();
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerText = "Enviar Solicitud";
+      mostrarToast("Error: " + err.message, "error");
+    }
+  );
+}
+function abrirModalPagarDeuda() {
+  document.getElementById('inputMontoPagarDeuda').value = '';
+  document.getElementById('deudaTotalPagar').textContent = formatGC(usuarioActual.deuda || 0);
+  document.getElementById('modalPagarDeuda').classList.remove('hidden');
+}
+
+function ejecutarPagoDeuda() {
+  const monto = parseFloat(document.getElementById('inputMontoPagarDeuda').value);
+  if (!monto || monto <= 0) return mostrarToast("Ingresa un monto válido", "error");
+
+  const btn = document.getElementById('btnConfirmarPagoDeuda');
+  btn.disabled = true;
+  btn.innerText = "Procesando pago...";
+
+  const exito = function() {
+    btn.disabled = false;
+    btn.innerText = "Pagar al Banco Central";
+    cerrarModal('modalPagarDeuda');
+    mostrarToast("¡Abonaste " + formatGC(monto) + " GC a tu deuda!", "info");
+    refrescarSaldo();
+    refrescarHistorial();
+  };
+  const fallo = function(err) {
+    btn.disabled = false;
+    btn.innerText = "Pagar al Banco Central";
+    mostrarToast("Error: " + err.message, "error");
+  };
+
+  if (usuarioActual.rol === 'docente') {
+    llamarAPI('pagarDeudaGobierno', [usuarioActual.uid, monto], exito, fallo);
+  } else {
+    llamarAPI('pagarDeudaAlumno', [usuarioActual.uid, monto], exito, fallo);
+  }
+}
+
+// ===================== BOLETÍN INDEC =====================
+function abrirBoletinIndec() {
+  // Verificamos que si es alumno, tenga el nivel necesario (Nivel 5)
+  if (usuarioActual.rol === 'alumno' && (usuarioActual.nivel || 1) < 5) {
+    return mostrarToast("Necesitás Nivel 5 para leer el boletín oficial", "error");
+  }
+
+  document.getElementById('modalIndec').classList.remove('hidden');
+  document.getElementById('indecContenido').classList.add('hidden');
+  document.getElementById('indecContenidoCargando').classList.remove('hidden');
+
+  llamarAPI(
+    'obtenerDatosIndec',
+    [],
+    function(datos) {
+      document.getElementById('indecContenidoCargando').classList.add('hidden');
+      document.getElementById('indecContenido').classList.remove('hidden');
+      
+      const txtInflacion = document.getElementById('indecInflacion');
+      const txtEstado = document.getElementById('indecEstado');
+      const txtExplicacion = document.getElementById('indecExplicacion');
+      
+      document.getElementById('indecMasa').textContent = formatGC(datos.masaMonetaria) + ' GC';
+      document.getElementById('indecFecha').textContent = datos.fechaUltimoCierre ? formatFecha(datos.fechaUltimoCierre) : 'Sin datos';
+
+      if (datos.inflacionActiva) {
+        txtInflacion.textContent = datos.inflacionOficial.toFixed(1) + '%';
+        
+        if (datos.inflacionOficial > 0) {
+          txtEstado.textContent = 'INFLACIÓN ACTIVA';
+          txtEstado.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-brick/10 text-brick inline-block';
+          txtInflacion.className = 'font-display text-5xl text-brick mb-1 tabular-nums';
+          txtExplicacion.innerHTML = "Los precios en el kiosco han subido un <strong>" + datos.inflacionOficial.toFixed(1) + "%</strong> porque hay más GrisCoins circulando. ¡Apurate a comprar antes de que los precios vuelvan a subir en el próximo cierre!";
+        } else {
+          txtEstado.textContent = 'ECONOMÍA ESTABLE';
+          txtEstado.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-celeste/20 text-celestedark inline-block';
+          txtInflacion.className = 'font-display text-5xl text-celestedark mb-1 tabular-nums';
+          txtExplicacion.textContent = "La emisión de dinero está controlada. Los precios del kiosco se mantienen estables.";
+        }
+      } else {
+        txtInflacion.textContent = '0.0%';
+        txtEstado.textContent = 'PRECIOS CONGELADOS';
+        txtEstado.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 inline-block';
+        txtInflacion.className = 'font-display text-5xl text-emerald-600 mb-1 tabular-nums';
+        txtExplicacion.textContent = "El sistema inflacionario está apagado. Los precios de la tienda se mantienen en su valor original sin importar cuánto dinero haya en la calle.";
+      }
+    },
+    function(err) {
+      cerrarModal('modalIndec');
+      mostrarToast("Error al cargar INDEC: " + err.message, "error");
+    }
+  );
+}
+
+// ===================== GESTIÓN DE USUARIOS =====================
+function abrirModalCrearUsuario() {
+  document.getElementById('inputNuevoNombre').value = '';
+  document.getElementById('selectNuevoRol').value = 'alumno';
+  document.getElementById('modalCrearUsuario').classList.remove('hidden');
+}
+
+function ejecutarCreacionUsuario() {
+  const nombre = document.getElementById('inputNuevoNombre').value.trim();
+  const rol = document.getElementById('selectNuevoRol').value;
+
+  if (!nombre) return mostrarToast("Ingresa un nombre válido", "error");
+
+  const btn = document.getElementById('btnConfirmarUsuario');
+  btn.disabled = true;
+  btn.innerText = "Registrando...";
+
+  llamarAPI(
+    'crearUsuario',
+    [nombre, rol],
+    function(res) {
+      btn.disabled = false;
+      btn.innerText = "Autorizar Acceso";
+      cerrarModal('modalCrearUsuario');
+      mostrarToast("¡Usuario " + nombre + " autorizado!");
+      
+      // Actualizamos la lista de usuarios en memoria silenciosamente
+      llamarAPI('obtenerTodosLosUsuarios', [], cargarSelectorLogin, function(e){ console.error(e); });
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerText = "Autorizar Acceso";
+      mostrarToast("Error: " + err.message, "error");
+    }
+  );
+}
+
+function ejecutarEmisionBanco() {
+  const receptorUID = document.getElementById('selectBeneficiarioBanco').value;
+  const monto = document.getElementById('inputMontoBanco').value;
+  const concepto = document.getElementById('inputConceptoBanco').value;
+
+  if (!monto || monto <= 0) return alert("Ingresa un monto válido.");
+
+  const btn = document.getElementById('btnConfirmarEmisionBanco');
+  btn.disabled = true;
+  btn.innerText = "Procesando inyección...";
+
+  llamarAPI(
+    'emitirDineroTesorero',
+    [usuarioActual.uid, receptorUID, monto, concepto],
+    function(res) {
+      btn.disabled = false;
+      btn.innerText = "Emitir y Transferir";
+      cerrarModal('modalEmitirBanco');
+      mostrarToast("Inyección de liquidez exitosa");
+      cargarDatosBanco(); // Refrescar masa monetaria
+      refrescarSaldo();
+      refrescarHistorial();
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerText = "Emitir y Transferir";
+      alert("Error del Banco Central: " + err.message);
+    }
+  );
+}
+// ===================== PRÉSTAMOS (ALUMNOS) =====================
+function abrirModalPrestamos() {
+  const nivel = usuarioActual.nivel || 1;
+  if (nivel < 10) {
+    return mostrarToast("Necesitas Nivel 10 para pedir préstamos. ¡Sigue aprendiendo!", "error");
+  }
+  
+  const limite = nivel * 50;
+  document.getElementById('limitePrestamoAlumno').textContent = formatGC(limite);
+  document.getElementById('inputMontoPrestamoAlumno').value = '';
+  document.getElementById('modalPrestamoAlumno').classList.remove('hidden');
+}
+
+function ejecutarSolicitudPrestamoAlumno() {
+  const monto = parseFloat(document.getElementById('inputMontoPrestamoAlumno').value);
+  if (!monto || monto <= 0) return mostrarToast("Ingresa un monto válido", "error");
+
+  const btn = document.getElementById('btnConfirmarPrestamoAlumno');
+  btn.disabled = true;
+  btn.innerText = "Analizando historial...";
+
+  llamarAPI(
+    'solicitarPrestamoAlumno',
+    [usuarioActual.uid, monto],
+    function(res) {
+      btn.disabled = false;
+      btn.innerText = "Pedir Préstamo";
+      cerrarModal('modalPrestamoAlumno');
+      mostrarToast("¡Préstamo de " + monto + " GC aprobado!", "info");
+      refrescarSaldo();
+      refrescarHistorial();
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerText = "Pedir Préstamo";
+      mostrarToast("Banco Central: " + err.message, "error");
+    }
+  );
+}
+
+// ===================== PANEL DE AUDITORÍA =====================
+function abrirModalAuditoria() {
+  const select = document.getElementById('selectAuditoriaUsuario');
+  select.innerHTML = '<option value="">Selecciona un usuario...</option>';
+  
+  Object.keys(mapaUsuarios).forEach(function(uid) {
+    const u = mapaUsuarios[uid];
+    if (u.activo && uid !== usuarioActual.uid) {
+      const opt = document.createElement('option');
+      opt.value = uid;
+      opt.textContent = u.nombre + ' (' + nombreRol(u.rol) + ')';
+      select.appendChild(opt);
+    }
+  });
+  
+  document.getElementById('inputAuditoriaGC').value = '';
+  document.getElementById('inputAuditoriaXP').value = '';
+  document.getElementById('inputAuditoriaMotivo').value = '';
+  document.getElementById('infoAuditoriaUsuario').classList.add('hidden');
+  
+  document.getElementById('modalAuditoria').classList.remove('hidden');
+}
+
+function mostrarStatsAuditoria() {
+  const uid = document.getElementById('selectAuditoriaUsuario').value;
+  const infoBox = document.getElementById('infoAuditoriaUsuario');
+  
+  if (!uid) {
+    infoBox.classList.add('hidden');
+    return;
+  }
+  
+  const u = mapaUsuarios[uid];
+  document.getElementById('auditoriaSaldoActual').textContent = formatGC(u.saldo) + ' GC';
+  document.getElementById('auditoriaXPActual').textContent = formatXP(u.xp) + ' XP';
+  infoBox.classList.remove('hidden');
+}
+
+function ejecutarAuditoria() {
+  const uid = document.getElementById('selectAuditoriaUsuario').value;
+  const gc = document.getElementById('inputAuditoriaGC').value;
+  const xp = document.getElementById('inputAuditoriaXP').value;
+  const motivo = document.getElementById('inputAuditoriaMotivo').value.trim();
+  
+  if (!uid) return mostrarToast("Selecciona un usuario", "error");
+  if (!gc && !xp) return mostrarToast("Ingresa al menos un ajuste de GC o XP", "error");
+  if (!motivo) return mostrarToast("El dictamen oficial es obligatorio", "error");
+
+  const btn = document.getElementById('btnConfirmarAuditoria');
+  btn.disabled = true;
+  btn.innerText = "Procesando...";
+
+  llamarAPI(
+    'aplicarAjusteAuditoria',
+    [usuarioActual.uid, uid, gc, xp, motivo],
+    function(res) {
+      btn.disabled = false;
+      btn.innerText = "Ejecutar Resolución";
+      cerrarModal('modalAuditoria');
+      mostrarToast("¡Resolución aplicada con éxito!", "info");
+      
+      // Actualizamos los datos en memoria en segundo plano para ver el saldo fresco
+      llamarAPI('obtenerTodosLosUsuarios', [], function(usuarios) { mapaUsuarios = usuarios || {}; }, function(e){});
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerText = "Ejecutar Resolución";
+      mostrarToast("Error: " + err.message, "error");
+    }
+  );
+}
+// ===================== ANIMACIÓN XP LOGIN =====================
+function mostrarAnimacionXpLogin() {
+  const overlay = document.getElementById('overlayXpLogin');
+  const barra = document.getElementById('barraXpLogin');
+  const destello = document.getElementById('destelloXp');
+  const texto = document.getElementById('textoXpLogin');
+  const rango = document.getElementById('rangoOverlayXp');
+  
+  // Reseteamos a 0
+  barra.style.width = '0%';
+  destello.style.left = '0%';
+  destello.style.opacity = '0';
+  
+  const xp = usuarioActual.xp || 0;
+  const rangoActual = obtenerRangoPorXPCliente(xp);
+  const idx = tablaRangos.findIndex(function (r) { return r.nombre === rangoActual.nombre; });
+  const siguienteRango = tablaRangos[idx + 1];
+  
+  rango.textContent = rangoActual.nombre;
+  overlay.classList.remove('hidden');
+  
+  // Pequeño delay para que la transición se vea fluida al abrir
+  setTimeout(() => {
+    destello.style.opacity = '0.8';
+    
+    if (!siguienteRango) {
+      barra.style.width = '100%';
+      destello.style.left = '100%';
+      texto.textContent = formatXP(xp) + ' XP (MAX)';
+    } else {
+      const xpDesdeInicioRango = xp - rangoActual.xpMin;
+      const xpNecesarioParaSiguiente = siguienteRango.xpMin - rangoActual.xpMin;
+      const pct = Math.min(100, Math.round((xpDesdeInicioRango / xpNecesarioParaSiguiente) * 100));
+      
+      barra.style.width = pct + '%';
+      destello.style.left = pct + '%';
+      
+      // Contador animado
+      let cuenta = 0;
+      const intervalo = setInterval(() => {
+        cuenta += Math.ceil(xp / 20); // Velocidad del contador
+        if (cuenta >= xp) {
+          cuenta = xp;
+          clearInterval(intervalo);
+          setTimeout(() => { destello.style.opacity = '0'; }, 300); // Apagar destello al terminar
+        }
+        texto.textContent = formatXP(cuenta) + ' XP';
+      }, 50);
+    }
+  }, 300);
+}
+
+// ===================== SISTEMA BATTLE GRIS (PORTAL) =====================
+function abrirBattleGris() {
+  // 1. Ocultamos toda la app principal
+  document.getElementById('app').classList.add('hidden');
+  
+  // 2. Mostramos el ecosistema de juego
+  document.getElementById('pantallaBattleGris').classList.remove('hidden');
+  
+  // 3. Cargamos los datos del usuario en la interfaz del juego
+  if (usuarioActual) {
+    document.getElementById('bgNombre').textContent = usuarioActual.nombre;
+    document.getElementById('bgNivel').textContent = 'NIVEL ' + (usuarioActual.nivel || 1);
+    document.getElementById('bgSaldo').textContent = formatGC(usuarioActual.saldo) + ' GC';
+  }
+
+  // (Opcional) Intentar forzar el modo horizontal automáticamente si el navegador lo permite
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(function(e) { console.log("Auto-rotación no soportada"); });
+    }
+  } catch(e) {}
+}
+
+function cerrarBattleGris() {
+  // 1. Ocultamos el ecosistema de juego
+  document.getElementById('pantallaBattleGris').classList.add('hidden');
+  
+  // 2. Volvemos a mostrar la app principal
+  document.getElementById('app').classList.remove('hidden');
+  
+  // (Opcional) Desbloquear la orientación del teléfono
+  try {
+    if (screen.orientation && screen.orientation.unlock) {
+      screen.orientation.unlock();
+    }
+  } catch(e) {}
+}
+
+  </script>
+  <!-- Modal Editar Producto -->
+<div id="modalEditarProducto" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative border border-gray-100">
+    <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Editar Producto</h3>
+    
+    <input type="hidden" id="editProdId">
+    <input type="hidden" id="editFotoUrlExistente">
+    <input type="hidden" id="editDriveFileIdExistente">
+    <input type="hidden" id="editIconoExistente">
+
+    <!-- Vista previa de la foto actual -->
+    <div class="text-center mb-4">
+      <p class="text-xs text-gray-500 mb-1">Imagen / Ícono actual:</p>
+      <div id="editFotoPreview" class="flex justify-center items-center h-20"></div>
+    </div>
+
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-semibold text-gray-600 block mb-1">Título / Nombre</label>
+        <input type="text" id="editProdTitulo" class="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-celeste outline-none">
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-gray-600 block mb-1">Subtítulo / Categoría</label>
+        <input type="text" id="editProdSubtitulo" class="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-celeste outline-none">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-gray-600 block mb-1">Precio (GC)</label>
+          <input type="number" id="editProdPrecio" class="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-celeste outline-none">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-600 block mb-1">Stock</label>
+          <input type="number" id="editProdStock" class="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-celeste outline-none">
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-gray-600 block mb-1">Cambiar Foto (Opcional)</label>
+        <input type="file" id="editProdFoto" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-celeste/10 file:text-celeste">
+        <p class="text-[10px] text-gray-400 mt-1">Si no seleccionas ninguna foto, se conservará la imagen actual.</p>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mt-6">
+      <button onclick="cerrarModalEditarProducto()" class="w-1/2 py-2.5 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50">Cancelar</button>
+      <button id="btnGuardarEditProd" onclick="guardarEdicionProducto()" class="w-1/2 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 shadow-md">Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast (Siempre visible) -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-surface border-2 border-borderc text-ink font-semibold shadow-lg text-sm px-6 py-3 rounded-full max-w-[90%] text-center"></div>
+
+<!-- ================= OVERLAY: ANIMACIÓN XP AL ENTRAR ================= -->
+<div id="overlayXpLogin" class="hidden fixed inset-0 z-[200] bg-ink/95 backdrop-blur-md flex flex-col items-center justify-center px-6">
+  <div class="text-6xl mb-4 animate-bounce">🌟</div>
+  <h2 class="font-display text-4xl text-surface mb-1">¡Bienvenido!</h2>
+  <p id="rangoOverlayXp" class="text-gold font-bold text-lg mb-10 uppercase tracking-widest text-center"></p>
+
+  <div class="w-full max-w-sm relative">
+    <div class="w-full h-5 bg-surface/20 rounded-full overflow-hidden border-2 border-white/20 relative">
+      <!-- Barra que se llena -->
+      <div id="barraXpLogin" class="h-full bg-gradient-to-r from-goldsoft to-gold w-0 shadow-[0_0_20px_#C9A227] transition-all duration-[1500ms] ease-out"></div>
+    </div>
+    <!-- Partícula de luz (destello) -->
+    <div id="destelloXp" class="absolute top-1/2 -translate-y-1/2 left-0 w-8 h-8 bg-white rounded-full blur-md opacity-0 transition-all duration-[1500ms] ease-out"></div>
+  </div>
+
+  <p id="textoXpLogin" class="text-surface font-mono mt-4 text-xl font-bold tracking-wider">Cargando...</p>
+
+  <button onclick="document.getElementById('overlayXpLogin').classList.add('hidden')" class="mt-12 text-surface/50 font-bold text-sm uppercase tracking-wider py-2 px-4 rounded-full border border-surface/30 active:scale-95 transition-transform">
+    Continuar al panel
+  </button>
+</div>
+  
+</script>
+</body>
+</html>
