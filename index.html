@@ -1035,10 +1035,25 @@ window.addEventListener('load', function () {
 
   // NOTA: Temporalmente desactivamos la carga de parámetros y rangos 
   // hasta que confirmemos que la conexión base funciona.
-  /*
-  fetch(API_URL + "?accion=obtenerParametros")...
-  fetch(API_URL + "?accion=obtenerRangos")...
-  */
+
+// 2. Cargar Parámetros
+    fetch(API_URL + "?accion=obtenerParametros")
+      .then(function(respuesta) { return respuesta.json(); })
+      .then(function(datos) {
+        console.log("Parámetros listos");
+        // Si tienes una variable global para parámetros, asígnala aquí (ej: parametros = datos;)
+      })
+      .catch(function(error) { console.error("Error al cargar parámetros:", error); });
+
+    // 3. Cargar Rangos (¡El combustible de tus animaciones!)
+    fetch(API_URL + "?accion=obtenerRangos")
+      .then(function(respuesta) { return respuesta.json(); })
+      .then(function(datos) {
+        console.log("Rangos listos");
+        tablaRangos = datos; // Alimentamos la variable que tu animación XP estaba buscando
+      })
+      .catch(function(error) { console.error("Error al cargar rangos:", error); });
+
 });
 
     function cargarSelectorLogin(usuarios) {
