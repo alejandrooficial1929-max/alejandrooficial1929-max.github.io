@@ -1049,7 +1049,12 @@ window.addEventListener('load', function () {
       
       // Si existe y el usuario sigue activo en la base de datos, lo dejamos entrar directo
       if (uidGuardado && mapaUsuarios[uidGuardado] && mapaUsuarios[uidGuardado].activo) {
-        ejecutarEntradaCorrecta(uidGuardado);
+        try {
+          ejecutarEntradaCorrecta(uidGuardado);
+        } catch (errorAnimacion) {
+          console.error("Falló la animación visual de entrada:", errorAnimacion);
+          // Si falla la animación (ej. faltan los rangos), evitamos que rompa la base de datos
+        }
       }
     }
 
