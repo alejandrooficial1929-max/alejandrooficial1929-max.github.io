@@ -1450,11 +1450,6 @@ function refrescarSaldo() {
       zonaProgreso.classList.remove('hidden');
 const xp = usuarioActual.xp || 0;
     const rangoActual = obtenerRangoPorXPCliente(xp);
-    
-    // ESCUDO DEFENSIVO: Evita que choque al cargar el perfil principal
-    if (!rangoActual || !rangoActual.nombre) {
-        return; 
-    }
 
     const idx = tablaRangos.findIndex(function (r) { return r.nombre === rangoActual.nombre; });
     const siguienteRango = tablaRangos[idx + 1];
