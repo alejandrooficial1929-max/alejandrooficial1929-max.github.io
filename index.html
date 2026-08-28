@@ -1049,8 +1049,16 @@ window.addEventListener('load', function () {
     fetch(API_URL + "?accion=obtenerRangos")
       .then(function(respuesta) { return respuesta.json(); })
       .then(function(datos) {
-        console.log("Rangos listos");
-        tablaRangos = datos; // Alimentamos la variable que tu animación XP estaba buscando
+        console.log("Rangos listos. ¿Qué nos envió Google?:", datos);
+        
+        // Auto-corrección temporal: si Google lo envió como texto, lo convertimos a lista
+        if (typeof datos === 'string') {
+            tablaRangos = JSON.parse(datos);
+        } else if (datos && datos.datos) {
+            tablaRangos = datos.datos; // Si lo envió envuelto en un objeto
+        } else {
+            tablaRangos = datos;
+        }
       })
       .catch(function(error) { console.error("Error al cargar rangos:", error); });
 
