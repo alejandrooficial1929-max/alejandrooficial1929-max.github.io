@@ -1433,10 +1433,16 @@ function refrescarSaldo() {
       }
 
       zonaProgreso.classList.remove('hidden');
-      const xp = usuarioActual.xp || 0;
-      const rangoActual = obtenerRangoPorXPCliente(xp);
-      const idx = tablaRangos.findIndex(function (r) { return r.nombre === rangoActual.nombre; });
-      const siguienteRango = tablaRangos[idx + 1];
+const xp = usuarioActual.xp || 0;
+    const rangoActual = obtenerRangoPorXPCliente(xp);
+    
+    // ESCUDO DEFENSIVO: Evita que choque al cargar el perfil principal
+    if (!rangoActual || !rangoActual.nombre) {
+        return; 
+    }
+
+    const idx = tablaRangos.findIndex(function (r) { return r.nombre === rangoActual.nombre; });
+    const siguienteRango = tablaRangos[idx + 1];
 
       document.getElementById('iconoRango').textContent = rangoActual.icono;
       document.getElementById('badgeRango').textContent = rangoActual.nombre;
@@ -2418,9 +2424,15 @@ function mostrarAnimacionXpLogin() {
   destello.style.opacity = '0';
   
   const xp = usuarioActual.xp || 0;
-  const rangoActual = obtenerRangoPorXPCliente(xp);
-  const idx = tablaRangos.findIndex(function (r) { return r.nombre === rangoActual.nombre; });
-  const siguienteRango = tablaRangos[idx + 1];
+    const rangoActual = obtenerRangoPorXPCliente(xp);
+    
+    // ESCUDO DEFENSIVO: Evita que choque al cargar el perfil principal
+    if (!rangoActual || !rangoActual.nombre) {
+        return; 
+    }
+
+    const idx = tablaRangos.findIndex(function (r) { return r.nombre === rangoActual.nombre; });
+    const siguienteRango = tablaRangos[idx + 1];
   
   rango.textContent = rangoActual.nombre;
   overlay.classList.remove('hidden');
