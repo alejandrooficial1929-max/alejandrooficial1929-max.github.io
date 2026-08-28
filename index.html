@@ -962,6 +962,10 @@
     function llamarAPI(nombreFuncion, argumentos, onSuccess, onError) {
       fetch(API_URL, {
         method: 'POST',
+        redirect: 'follow', // Obligatorio: Le dice a Chrome que siga la redirección 302 de Google
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8' // Obligatorio: Evita que Chrome haga una alerta de seguridad (Preflight)
+        },
         body: JSON.stringify({ funcion: nombreFuncion, args: argumentos })
       })
       .then(function(respuesta) { return respuesta.json(); })
@@ -977,6 +981,7 @@
         if (onError) onError(error);
       });
     }
+
     // ===================== ESTADO GLOBAL =====================
     let mapaUsuarios = {};
     let usuarioActual = null;
