@@ -962,8 +962,6 @@
     function llamarAPI(nombreFuncion, argumentos, onSuccess, onError) {
       fetch(API_URL, {
         method: 'POST',
-        redirect: 'follow',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Truco anti-CORS
         body: JSON.stringify({ funcion: nombreFuncion, args: argumentos })
       })
       .then(function(respuesta) { return respuesta.json(); })
