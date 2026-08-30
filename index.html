@@ -955,16 +955,16 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzMiYMNN8z1Tyf1dWVj50qgGGkaBK_PxIIvnV4G40L-e7eppY2Qoqz4SsmQXALjh-lX/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbyJ79y1Or_4H3NX3HxyJWagVtmZpPe5ffseBUDfEfTX_GH7dajvXvxh2PIvlgn4W0Ff/exec";
   // ==========================================
     // TRADUCTOR UNIVERSAL (Reemplaza google.script.run)
     // ==========================================
     function llamarAPI(nombreFuncion, argumentos, onSuccess, onError) {
       fetch(API_URL, {
         method: 'POST',
-        redirect: 'follow', // Obligatorio: Le dice a Chrome que siga la redirección 302 de Google
+        // El disfraz de texto plano es obligatorio para evitar bloqueos en cuentas Gmail
         headers: {
-          'Content-Type': 'text/plain;charset=utf-8' // Obligatorio: Evita que Chrome haga una alerta de seguridad (Preflight)
+          'Content-Type': 'text/plain;charset=utf-8'
         },
         body: JSON.stringify({ funcion: nombreFuncion, args: argumentos })
       })
