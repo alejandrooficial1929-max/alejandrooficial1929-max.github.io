@@ -2719,18 +2719,54 @@ function abrirModalVerClases() {
       }
       
       clases.forEach(function(c) {
-        // Formateamos la fecha visualmente
         const partesFecha = c.fechaClase.split('-');
-        const fechaVisual = partesFecha[2] + '/' + partesFecha[1] + '/' + partesFecha[0]; // DD/MM/YYYY
+        const fechaVisual = partesFecha[2] + '/' + partesFecha[1] + '/' + partesFecha[0]; 
         
+        // Armamos la lista de nombres en HTML
+        let nombresHTML = '';
+        if (c.alumnosPresentes && c.alumnosPresentes.length > 0) {
+          c.alumnosPresentes.forEach(function(uid) {
+            // Buscamos el nombre del alumno en la memoria; si no está, ponemos un texto por defecto
+            const nombreAlumno = mapaUsuarios[uid] ? mapaUsuarios[uid].nombre : 'Usuario eliminado';
+            nombresHTML += '<div class="text-sm font-medium text-inkmuted py-1.5 border-b border-borderc last:border-0 flex items-center gap-2"><span class="text-celeste text-xs">■</span> ' + nombreAlumno + '</div>';
+          });
+        } else {
+          nombresHTML = '<div class="text-sm text-inkmuted py-1.5 italic">Ningún alumno registrado en esta clase.</div>';
+        }
+
         const card = document.createElement('div');
-        card.className = 'bg-bg border border-borderc rounded-xl p-4 shadow-sm';
+        // Le agregamos cursor-pointer para que se sepa que es clickeable
+        card.className = 'bg-bg border border-borderc rounded-xl p-4 shadow-sm cursor-pointer hover:bg-surface transition-colors';
+        
+        // Creamos un ID único para la lista oculta de esta tarjeta
+        const listaId = 'lista-asistencia-' + c.id;
+
+        // Función para mostrar/ocultar al hacer clic
+        card.onclick = function() {
+          const lista = document.getElementById(listaId);
+          const icono = document.getElementById('icono-' + c.id);
+          if (lista.classList.contains('hidden')) {
+            lista.classList.remove('hidden');
+            icono.textContent = '▲';
+          } else {
+            lista.classList.add('hidden');
+            icono.textContent = '▼';
+          }
+        };
+
         card.innerHTML = 
-          '<div class="flex justify-between items-center mb-2">' +
+          '<div class="flex justify-between items-center mb-1 pointer-events-none">' +
             '<p class="font-bold text-ink">Clase del ' + fechaVisual + '</p>' +
             '<span class="bg-celeste/20 text-celestedark text-[10px] font-bold px-2 py-1 rounded-full">' + c.cantidadAsistentes + ' presentes</span>' +
           '</div>' +
-          '<p class="text-xs text-inkmuted">Registrado el ' + formatFecha(c.fechaRegistro) + '</p>';
+          '<div class="flex justify-between items-center pointer-events-none">' +
+            '<p class="text-xs text-inkmuted">Registrado el ' + formatFecha(c.fechaRegistro) + '</p>' +
+            '<p class="text-xs text-celestedark font-bold">Ver lista <span id="icono-' + c.id + '">▼</span></p>' +
+          '</div>' +
+          '<div id="' + listaId + '" class="hidden mt-3 pt-3 border-t border-borderc bg-surface/50 rounded-lg p-3 pointer-events-none">' +
+            nombresHTML +
+          '</div>';
+          
         contenedor.appendChild(card);
       });
     },
