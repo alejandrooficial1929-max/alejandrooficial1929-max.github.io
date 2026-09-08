@@ -699,8 +699,71 @@
         <p class="font-bold text-sm text-ink">Ver Clases</p>
         <p class="text-[10px] text-inkmuted mt-1">Historial de registros</p>
       </button>
+
+      <button onclick="cerrarModal('modalMenuEstudiantil'); abrirModalFinanzas();" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-center active:scale-[0.98] transition-transform col-span-2">
+        <div class="text-3xl mb-2">💳</div>
+        <p class="font-bold text-sm text-ink">Finanzas y Cuotas</p>
+        <p class="text-[10px] text-inkmuted mt-1">Suscripciones, saldos y deudas ($)</p>
+      </button>
     </div>
     <button onclick="cerrarModal('modalMenuEstudiantil')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: FINANZAS Y CUOTAS ================= -->
+<div id="modalFinanzas" class="hidden fixed inset-0 z-40 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalFinanzas')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up h-[85vh] flex flex-col">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5 shrink-0"></div>
+    <h3 class="font-display text-2xl text-celestedark mb-1 shrink-0">Finanzas Escolares</h3>
+    <p class="text-inkmuted text-sm font-medium mb-4 shrink-0">Control de pagos reales y clases disponibles.</p>
+    
+    <input type="text" id="buscadorFinanzas" placeholder="Buscar alumno..." class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-3 focus:outline-none focus:border-celeste font-medium shrink-0" onkeyup="renderListaFinanzas()">
+
+    <div id="listaAlumnosFinanzas" class="flex-1 overflow-y-auto space-y-2 mb-4 p-2 scrollbar-none">
+      <!-- Tarjetas de finanzas -->
+    </div>
+    <button onclick="cerrarModal('modalFinanzas'); abrirModal('modalMenuEstudiantil');" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1 shrink-0">Volver</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: REGISTRAR PAGO ================= -->
+<div id="modalRegistrarPago" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalRegistrarPago')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up h-[90vh] overflow-y-auto scrollbar-none">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-celestedark mb-1">Registrar Pago</h3>
+    <p id="nombrePagoAlumno" class="text-ink font-bold text-lg mb-6"></p>
+
+    <!-- BLOQUE A: Lo que se vende -->
+    <div class="bg-surface2 border border-borderc rounded-xl p-4 mb-5">
+      <label class="text-[10px] uppercase tracking-wider text-inkmuted font-bold mb-1 block">¿Cuántas clases pagó?</label>
+      <input type="number" id="inputClasesPagadas" placeholder="Ej: 4 u 8" class="w-full bg-surface border border-borderc rounded-xl px-4 py-2 mb-3 focus:outline-none focus:border-celeste font-medium">
+      
+      <label class="text-[10px] uppercase tracking-wider text-inkmuted font-bold mb-1 block">Precio Total a Cobrar ($ ARS)</label>
+      <input type="number" id="inputPrecioTotal" placeholder="Ej: 80000" class="w-full bg-surface border border-borderc rounded-xl px-4 py-2 focus:outline-none focus:border-celeste font-medium">
+      
+      <p id="calculadoraClase" class="text-[10px] text-celestedark font-bold mt-2 text-right h-4"></p>
+    </div>
+
+    <!-- BLOQUE B: Lo que ingresa hoy -->
+    <div class="bg-surface2 border border-borderc rounded-xl p-4 mb-6">
+      <label class="text-[10px] uppercase tracking-wider text-inkmuted font-bold mb-1 block">Medio de Pago</label>
+      <select id="selectMedioPago" class="w-full bg-surface border border-borderc rounded-xl px-4 py-2 mb-3 focus:outline-none focus:border-celeste font-medium">
+        <option value="Efectivo">💵 Efectivo</option>
+        <option value="Mercado Pago">📱 Mercado Pago</option>
+        <option value="Naranja X">🍊 Naranja X</option>
+        <option value="Banco Macro">🏦 Banco Macro</option>
+      </select>
+
+      <label class="text-[10px] uppercase tracking-wider text-inkmuted font-bold mb-1 block">Monto Realmente Recibido Hoy ($ ARS)</label>
+      <input type="number" id="inputMontoRecibido" placeholder="Ej: 60000" class="w-full bg-surface border border-borderc rounded-xl px-4 py-2 focus:outline-none focus:border-celeste font-medium">
+      
+      <p id="calculadoraDeuda" class="text-xs mt-2 font-bold text-right h-4"></p>
+    </div>
+
+    <button id="btnConfirmarPago" class="w-full bg-celeste text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg">Guardar Pago</button>
+    <button onclick="cerrarModal('modalRegistrarPago')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
   </div>
 </div>
 
@@ -1110,7 +1173,7 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzcrDbbLP9PpmWKJvpdcvjPvtM2B5pIJRdQEVhDic0pATWhATOOjGaMW4jPpXff-VZ1/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbyjGUT2-rJtk1-3JZuequ0ttvTKRilk4BKmarOvoY02Vm21i-UYP9PQ9P1qWe9jFZBl/exec";
   // ==========================================
     // TRADUCTOR UNIVERSAL (Reemplaza google.script.run)
     // ==========================================
@@ -2998,6 +3061,141 @@ function aplicarBanderasDeSistema(parametros) {
   </button>
 </div>
   
+// ===================== FINANZAS ESCOLARES =====================
+let alumnoPagoSeleccionado = null;
+
+function abrirModalFinanzas() {
+  document.getElementById('buscadorFinanzas').value = '';
+  renderListaFinanzas();
+  document.getElementById('modalFinanzas').classList.remove('hidden');
+}
+
+function renderListaFinanzas() {
+  const filtro = document.getElementById('buscadorFinanzas').value.toLowerCase();
+  const contenedor = document.getElementById('listaAlumnosFinanzas');
+  contenedor.innerHTML = '';
+  
+  let alumnos = Object.keys(mapaUsuarios)
+    .map(function(uid) { return Object.assign({ uid: uid }, mapaUsuarios[uid]); })
+    .filter(function(u) { return u.rol === 'alumno' && u.activo; });
+                       
+  alumnos.sort(function(a, b) { return a.nombre.localeCompare(b.nombre); });
+
+  alumnos.forEach(function(alumno) {
+    if (filtro && !alumno.nombre.toLowerCase().includes(filtro)) return;
+    
+    const clases = Number(alumno.clasesDisponibles) || 0;
+    const deuda = Number(alumno.deudaARS) || 0;
+    
+    // Semáforo
+    let colorSemaforo = 'bg-red-100 text-red-700 border-red-200';
+    let iconoSemaforo = '🔴';
+    if (clases > 1) { colorSemaforo = 'bg-emerald-100 text-emerald-700 border-emerald-200'; iconoSemaforo = '🟢'; }
+    else if (clases === 1) { colorSemaforo = 'bg-yellow-100 text-yellow-700 border-yellow-200'; iconoSemaforo = '🟡'; }
+
+    const div = document.createElement('div');
+    div.className = 'bg-surface border border-borderc shadow-sm rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-surface2 transition-colors';
+    div.onclick = function() { abrirModalRegistrarPago(alumno.uid, alumno.nombre); };
+    
+    div.innerHTML = 
+      '<div>' +
+        '<p class="font-bold text-ink mb-1">' + alumno.nombre + '</p>' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ' + colorSemaforo + '">' + iconoSemaforo + ' ' + clases + ' clases</span>' +
+          (deuda > 0 ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-brick/10 text-brick border-brick/20 animate-pulse">⚠️ Debe $' + deuda + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="text-celeste text-lg font-bold">💳</div>';
+    contenedor.appendChild(div);
+  });
+}
+
+function abrirModalRegistrarPago(uid, nombre) {
+  alumnoPagoSeleccionado = uid;
+  document.getElementById('nombrePagoAlumno').textContent = nombre;
+  document.getElementById('inputClasesPagadas').value = '';
+  document.getElementById('inputPrecioTotal').value = '';
+  document.getElementById('inputMontoRecibido').value = '';
+  document.getElementById('calculadoraClase').textContent = '';
+  document.getElementById('calculadoraDeuda').textContent = '';
+  document.getElementById('modalRegistrarPago').classList.remove('hidden');
+}
+
+// Calculadoras en tiempo real
+function actualizarCalculadoras() {
+  const clases = Number(document.getElementById('inputClasesPagadas').value) || 0;
+  const precio = Number(document.getElementById('inputPrecioTotal').value) || 0;
+  const recibido = Number(document.getElementById('inputMontoRecibido').value) || 0;
+  
+  // Calc 1: Precio por clase
+  const calcClase = document.getElementById('calculadoraClase');
+  if (clases > 0 && precio > 0) {
+    calcClase.textContent = '💡 $' + (precio / clases).toFixed(2) + ' por clase.';
+  } else {
+    calcClase.textContent = '';
+  }
+
+  // Calc 2: Deuda
+  const calcDeuda = document.getElementById('calculadoraDeuda');
+  if (precio > 0) {
+    const debe = precio - recibido;
+    if (debe > 0) {
+      calcDeuda.textContent = '🚨 Quedará debiendo $' + debe;
+      calcDeuda.className = 'text-xs mt-2 font-bold text-right h-4 text-brick animate-pulse';
+    } else if (debe === 0 && recibido > 0) {
+      calcDeuda.textContent = '✅ Pago completo, sin deudas.';
+      calcDeuda.className = 'text-xs mt-2 font-bold text-right h-4 text-emerald-600';
+    } else if (debe < 0) {
+      calcDeuda.textContent = '⚠️ Atención: El pago supera el precio total.';
+      calcDeuda.className = 'text-xs mt-2 font-bold text-right h-4 text-yellow-600';
+    }
+  } else {
+    calcDeuda.textContent = '';
+  }
+}
+
+document.getElementById('inputClasesPagadas').addEventListener('input', actualizarCalculadoras);
+document.getElementById('inputPrecioTotal').addEventListener('input', actualizarCalculadoras);
+document.getElementById('inputMontoRecibido').addEventListener('input', actualizarCalculadoras);
+
+document.getElementById('btnConfirmarPago').addEventListener('click', function() {
+  const clases = document.getElementById('inputClasesPagadas').value;
+  const precio = document.getElementById('inputPrecioTotal').value;
+  const recibido = document.getElementById('inputMontoRecibido').value;
+  const medio = document.getElementById('selectMedioPago').value;
+  
+  if (!clases || clases <= 0 || !precio || precio <= 0) {
+    return mostrarToast("Completa la cantidad de clases y el precio total.", "error");
+  }
+
+  const btn = document.getElementById('btnConfirmarPago');
+  btn.disabled = true;
+  btn.textContent = "Guardando...";
+
+  llamarAPI(
+    'registrarPagoCuota',
+    [alumnoPagoSeleccionado, clases, precio, recibido, medio],
+    function(res) {
+      btn.disabled = false;
+      btn.textContent = "Guardar Pago";
+      cerrarModal('modalRegistrarPago');
+      mostrarToast("Pago guardado correctamente", "info");
+      
+      // Actualizar memoria para que el semáforo cambie instantáneamente
+      if (mapaUsuarios[alumnoPagoSeleccionado]) {
+        mapaUsuarios[alumnoPagoSeleccionado].clasesDisponibles = res.nuevasClases;
+        mapaUsuarios[alumnoPagoSeleccionado].deudaARS = res.nuevaDeuda;
+      }
+      renderListaFinanzas();
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.textContent = "Guardar Pago";
+      mostrarToast("Error: " + err.message, "error");
+    }
+  );
+});
+
 </script>
 </body>
 </html>
