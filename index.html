@@ -62,6 +62,31 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .anim-slide-up { animation: slideUp 0.25s ease-out; }
     .anim-fade-in { animation: fadeIn 0.2s ease-out; }
+
+    /* Bloqueo visual para herramientas en desarrollo */
+    .proximamente-bloqueo {
+      position: relative;
+      opacity: 0.5; 
+      pointer-events: none; 
+      user-select: none;
+    }
+    .proximamente-bloqueo::after {
+      content: "Próximamente";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(30, 41, 59, 0.9); 
+      color: #fbbf24; 
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      z-index: 10;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body class="font-body text-ink min-h-screen">
@@ -233,7 +258,7 @@
         <div class="grid grid-cols-2 gap-3">
           
           <!-- Boletín INDEC -->
-          <button id="btnAppIndec" onclick="abrirBoletinIndec()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform opacity-50 grayscale">
+          <button id="btnAppIndec" onclick="abrirBoletinIndec()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform proximamente-bloqueo">
             <div id="candadoIndec" class="absolute top-3 right-3 text-sm">🔒</div>
             <div class="text-2xl mb-2">📰</div>
             <p class="font-bold text-xs text-ink">Boletín INDEC</p>
@@ -241,7 +266,7 @@
           </button>
 
           <!-- Préstamos -->
-          <button id="btnAppPrestamos" onclick="abrirModalPrestamos()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform opacity-50 grayscale">
+          <button id="btnAppPrestamos" onclick="abrirModalPrestamos()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform proximamente-bloqueo">
             <div id="candadoPrestamos" class="absolute top-3 right-3 text-sm">🔒</div>
             <div class="text-2xl mb-2">🤝</div>
             <p class="font-bold text-xs text-ink">Préstamos</p>
@@ -249,7 +274,7 @@
           </button>
 
           <!-- Monotributo -->
-          <button id="btnAppImpuestos" onclick="abrirModalMonotributo()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform opacity-50 grayscale col-span-2">
+          <button id="btnAppImpuestos" onclick="abrirModalMonotributo()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform col-span-2 proximamente-bloqueo">
             <div id="candadoImpuestos" class="absolute top-3 right-3 text-sm">🔒</div>
             <div class="text-2xl mb-2">🏢</div>
             <p class="font-bold text-xs text-ink">Monotributo GrisPay</p>
@@ -1212,7 +1237,7 @@ window.addEventListener('load', function () {
 
       // Lanzar animación de XP si es alumno
       if (usuarioActual.rol === 'alumno') {
-        mostrarAnimacionXpLogin();
+        // mostrarAnimacionXpLogin();
       }
     }
 
