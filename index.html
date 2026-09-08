@@ -243,7 +243,7 @@
             <p class="text-[10px] text-inkmuted mt-1 font-medium">Inflación oficial</p>
           </button>
 
-          <button onclick="abrirModalPrestamoGobierno()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform">
+          <button id="btnAppPrestamosDocente" onclick="abrirModalPrestamoGobierno()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform">
             <div class="text-2xl mb-2">🏦</div>
             <p class="font-bold text-xs text-ink">Pedir Préstamo</p>
             <p class="text-[10px] text-inkmuted mt-1 font-medium">Al Blacky Bank</p>
@@ -2631,12 +2631,18 @@ function aplicarBanderasDeSistema(parametros) {
   if(toggleMono) toggleMono.checked = parametros.monotributoActivo === true;
 
   const btnPrestamos = document.getElementById('btnAppPrestamos');
+  const btnPrestamosDocente = document.getElementById('btnAppPrestamosDocente');
   const btnMonotributo = document.getElementById('btnAppImpuestos');
   const btnBattleGris = document.querySelector('button[onclick="abrirBattleGris()"]');
   
   if (btnPrestamos) {
     if (parametros.prestamosActivos) btnPrestamos.classList.remove('proximamente-bloqueo');
     else btnPrestamos.classList.add('proximamente-bloqueo');
+  }
+
+  if (btnPrestamosDocente) {
+    if (parametros.prestamosActivos) btnPrestamosDocente.classList.remove('proximamente-bloqueo');
+    else btnPrestamosDocente.classList.add('proximamente-bloqueo');
   }
 
   if (btnMonotributo) {
