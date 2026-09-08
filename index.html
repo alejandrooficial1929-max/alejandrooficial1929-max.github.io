@@ -249,7 +249,7 @@
             <p class="text-[10px] text-inkmuted mt-1 font-medium">Al Blacky Bank</p>
           </button>
 
-          <button onclick="abrirModalAsistencia()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform col-span-2">
+          <button onclick="abrirModalMenuEstudiantil()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform col-span-2">
             <div class="text-2xl mb-2">📋</div>
             <p class="font-bold text-xs text-ink">Gestión Estudiantil</p>
             <p class="text-[10px] text-inkmuted mt-1 font-medium">Crear clase y tomar asistencia</p>
@@ -439,7 +439,7 @@
       <div class="bg-brick/10 text-brick w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">⚖️</div>
       <p class="font-bold text-[10px] text-ink">Auditar</p>
     </button>
-    <button onclick="abrirModalAsistencia()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
+    <button onclick="abrirModalMenuEstudiantil()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
       <div class="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">📋</div>
       <p class="font-bold text-[10px] text-ink">Clases</p>
     </button>
@@ -679,6 +679,49 @@
 
     
   </div>
+
+  <!-- ================= MODAL: MENÚ GESTIÓN ESTUDIANTIL ================= -->
+<div id="modalMenuEstudiantil" class="hidden fixed inset-0 z-40 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalMenuEstudiantil')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5"></div>
+    <h3 class="font-display text-2xl text-celestedark mb-1">Gestión Estudiantil</h3>
+    <p class="text-inkmuted text-sm font-medium mb-5">Selecciona una acción.</p>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <button onclick="cerrarModal('modalMenuEstudiantil'); abrirModalAsistencia();" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-center active:scale-[0.98] transition-transform">
+        <div class="text-3xl mb-2">📋</div>
+        <p class="font-bold text-sm text-ink">Crear Clase</p>
+        <p class="text-[10px] text-inkmuted mt-1">Tomar asistencia</p>
+      </button>
+      <button onclick="cerrarModal('modalMenuEstudiantil'); abrirModalVerClases();" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-center active:scale-[0.98] transition-transform">
+        <div class="text-3xl mb-2">📅</div>
+        <p class="font-bold text-sm text-ink">Ver Clases</p>
+        <p class="text-[10px] text-inkmuted mt-1">Historial de registros</p>
+      </button>
+    </div>
+    <button onclick="cerrarModal('modalMenuEstudiantil')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: VER CLASES ================= -->
+<div id="modalVerClases" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalVerClases')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up h-[85vh] flex flex-col">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5 shrink-0"></div>
+    <h3 class="font-display text-2xl text-celestedark mb-1 shrink-0">Historial de Clases</h3>
+    <p class="text-inkmuted text-sm font-medium mb-4 shrink-0">Registro de asistencias pasadas.</p>
+    
+    <div id="listaHistorialClases" class="flex-1 overflow-y-auto space-y-3 mb-4 p-2 scrollbar-none">
+      <!-- Las clases se cargarán aquí -->
+    </div>
+    
+    <button onclick="cerrarModal('modalVerClases'); abrirModal('modalMenuEstudiantil');" class="w-full bg-bg border border-borderc text-ink font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg shrink-0 mt-auto">
+      Volver al Menú
+    </button>
+  </div>
+</div>
+
   <!-- ================= MODAL: GESTIÓN ESTUDIANTIL (ASISTENCIA) ================= -->
 <div id="modalAsistencia" class="hidden fixed inset-0 z-50 flex items-end justify-center">
   <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalAsistencia')"></div>
@@ -1067,7 +1110,7 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzCdpkBlO-eWIaNml0l8cuNAof2R72Saoo2FJgGqa6xaXOWcMB9nCKZfs2o9GSWbn0j/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwTtb243jq6KxyLhpCZpAxpL0IjqSGyHDSnUUBYt84aWBvidylxZrVtFiF-KuHLAmcg/exec";
   // ==========================================
     // TRADUCTOR UNIVERSAL (Reemplaza google.script.run)
     // ==========================================
@@ -2656,6 +2699,46 @@ function cerrarBattleGris() {
 }
 
 // ===================== GESTIÓN ESTUDIANTIL (ASISTENCIA) =====================
+function abrirModalMenuEstudiantil() {
+  document.getElementById('modalMenuEstudiantil').classList.remove('hidden');
+}
+
+function abrirModalVerClases() {
+  document.getElementById('modalVerClases').classList.remove('hidden');
+  const contenedor = document.getElementById('listaHistorialClases');
+  contenedor.innerHTML = '<p class="text-center text-inkmuted py-10 font-medium">Cargando registros...</p>';
+  
+  llamarAPI(
+    'obtenerHistorialClases',
+    [],
+    function(clases) {
+      contenedor.innerHTML = '';
+      if (!clases || clases.length === 0) {
+        contenedor.innerHTML = '<p class="text-center text-inkmuted py-10 font-medium">No hay clases registradas aún.</p>';
+        return;
+      }
+      
+      clases.forEach(function(c) {
+        // Formateamos la fecha visualmente
+        const partesFecha = c.fechaClase.split('-');
+        const fechaVisual = partesFecha[2] + '/' + partesFecha[1] + '/' + partesFecha[0]; // DD/MM/YYYY
+        
+        const card = document.createElement('div');
+        card.className = 'bg-bg border border-borderc rounded-xl p-4 shadow-sm';
+        card.innerHTML = 
+          '<div class="flex justify-between items-center mb-2">' +
+            '<p class="font-bold text-ink">Clase del ' + fechaVisual + '</p>' +
+            '<span class="bg-celeste/20 text-celestedark text-[10px] font-bold px-2 py-1 rounded-full">' + c.cantidadAsistentes + ' presentes</span>' +
+          '</div>' +
+          '<p class="text-xs text-inkmuted">Registrado el ' + formatFecha(c.fechaRegistro) + '</p>';
+        contenedor.appendChild(card);
+      });
+    },
+    function(err) {
+      contenedor.innerHTML = '<p class="text-center text-brick py-10 font-bold">Error: ' + err.message + '</p>';
+    }
+  );
+}
 let presentesSet = new Set();
 
 function abrirModalAsistencia() {
