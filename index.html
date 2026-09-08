@@ -249,6 +249,12 @@
             <p class="text-[10px] text-inkmuted mt-1 font-medium">Al Blacky Bank</p>
           </button>
 
+          <button onclick="abrirModalAsistencia()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.98] transition-transform col-span-2">
+            <div class="text-2xl mb-2">📋</div>
+            <p class="font-bold text-xs text-ink">Gestión Estudiantil</p>
+            <p class="text-[10px] text-inkmuted mt-1 font-medium">Crear clase y tomar asistencia</p>
+          </button>
+
         </div>
       </div>
 
@@ -416,7 +422,7 @@
   </div>
 
   <h3 class="text-sm font-bold text-ink mb-3">Operaciones Centrales</h3>
-  <div class="grid grid-cols-4 gap-2 mb-5">
+  <div class="grid grid-cols-5 gap-2 mb-5">
     <button onclick="abrirModalEmitirBanco()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
       <div class="bg-emerald-100 text-emerald-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">🖨️</div>
       <p class="font-bold text-[10px] text-ink">Emitir</p>
@@ -432,6 +438,10 @@
     <button onclick="abrirModalAuditoria()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
       <div class="bg-brick/10 text-brick w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">⚖️</div>
       <p class="font-bold text-[10px] text-ink">Auditar</p>
+    </button>
+    <button onclick="abrirModalAsistencia()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
+      <div class="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 text-lg">📋</div>
+      <p class="font-bold text-[10px] text-ink">Clases</p>
     </button>
   </div>
 </div>
@@ -669,6 +679,30 @@
 
     
   </div>
+  <!-- ================= MODAL: GESTIÓN ESTUDIANTIL (ASISTENCIA) ================= -->
+<div id="modalAsistencia" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalAsistencia')"></div>
+  <div class="relative w-full max-w-md bg-surface border-t border-borderc rounded-t-3xl p-6 anim-slide-up h-[85vh] flex flex-col">
+    <div class="w-12 h-1.5 bg-borderc rounded-full mx-auto mb-5 shrink-0"></div>
+    <h3 class="font-display text-2xl text-celestedark mb-1 shrink-0">Gestión Estudiantil</h3>
+    <p class="text-inkmuted text-sm font-medium mb-4 shrink-0">Crea una clase y toma asistencia.</p>
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block shrink-0">Fecha de la clase</label>
+    <input type="date" id="inputFechaClase" class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-celeste font-medium shrink-0">
+
+    <label class="text-xs uppercase tracking-wider text-celestedark font-bold mb-2 block shrink-0">Buscar Alumno (Presentes: <span id="contadorAsistencia" class="text-ink">0</span>)</label>
+    <input type="text" id="buscadorAsistencia" placeholder="Escribe un nombre..." class="w-full bg-bg border border-borderc rounded-xl px-4 py-3 mb-3 focus:outline-none focus:border-celeste font-medium shrink-0" onkeyup="renderListaAsistencia()">
+    
+    <div id="listaAlumnosAsistencia" class="flex-1 overflow-y-auto space-y-2 mb-4 p-2 bg-bg border border-borderc rounded-xl shadow-inner scrollbar-none">
+      <!-- Los alumnos aparecerán aquí -->
+    </div>
+
+    <button id="btnGuardarAsistencia" onclick="ejecutarGuardarAsistencia()" class="w-full bg-celeste text-surface font-bold rounded-xl py-4 active:scale-[0.98] transition-transform shadow-sm text-lg shrink-0 mt-auto">
+      Guardar Clase
+    </button>
+    <button onclick="cerrarModal('modalAsistencia')" class="w-full text-inkmuted font-semibold text-sm py-4 mt-1 shrink-0">Cancelar</button>
+  </div>
+</div>
   <!-- ================= MODAL: CONFIGURAR CIERRE INDEC ================= -->
 <div id="modalCierreIndec" class="hidden fixed inset-0 z-50 flex items-end justify-center">
   <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" onclick="cerrarModal('modalCierreIndec')"></div>
@@ -1033,7 +1067,7 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwXMRrTZyCF2bM4HjKd6AZ7QbdLZK2FFrCqPwhO-_Ec5a9C4FOobHiVQN2kUO-83qlN/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzCdpkBlO-eWIaNml0l8cuNAof2R72Saoo2FJgGqa6xaXOWcMB9nCKZfs2o9GSWbn0j/exec";
   // ==========================================
     // TRADUCTOR UNIVERSAL (Reemplaza google.script.run)
     // ==========================================
@@ -2619,6 +2653,101 @@ function cerrarBattleGris() {
       screen.orientation.unlock();
     }
   } catch(e) {}
+}
+
+// ===================== GESTIÓN ESTUDIANTIL (ASISTENCIA) =====================
+let presentesSet = new Set();
+
+function abrirModalAsistencia() {
+  // Poner fecha de hoy por defecto automáticamente
+  const hoy = new Date();
+  const offset = hoy.getTimezoneOffset(); // Para evitar problemas de zona horaria
+  const fechaLocal = new Date(hoy.getTime() - (offset*60*1000)).toISOString().split('T')[0];
+  document.getElementById('inputFechaClase').value = fechaLocal;
+  
+  // Limpiar campos y memoria
+  document.getElementById('buscadorAsistencia').value = '';
+  presentesSet.clear();
+  
+  renderListaAsistencia();
+  document.getElementById('modalAsistencia').classList.remove('hidden');
+}
+
+function renderListaAsistencia() {
+  const filtro = document.getElementById('buscadorAsistencia').value.toLowerCase();
+  const contenedor = document.getElementById('listaAlumnosAsistencia');
+  contenedor.innerHTML = '';
+  
+  // Filtrar solo los que sean alumnos y estén activos
+  let alumnos = Object.keys(mapaUsuarios)
+    .map(function(uid) { return Object.assign({ uid: uid }, mapaUsuarios[uid]); })
+    .filter(function(u) { return u.rol === 'alumno' && u.activo; });
+                       
+  // Ordenar alfabéticamente
+  alumnos.sort(function(a, b) { return a.nombre.localeCompare(b.nombre); });
+
+  alumnos.forEach(function(alumno) {
+    if (filtro && !alumno.nombre.toLowerCase().includes(filtro)) return;
+    
+    const estaPresente = presentesSet.has(alumno.uid);
+    const div = document.createElement('div');
+    // Pintamos de celeste si está presente, o fondo normal si no
+    div.className = 'flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors select-none ' + (estaPresente ? 'bg-celeste/10 border-celeste shadow-sm' : 'bg-surface border-borderc shadow-sm');
+    div.onclick = function() { toggleAsistencia(alumno.uid); };
+    
+    div.innerHTML = 
+      '<div class="flex items-center gap-3 pointer-events-none">' +
+        '<div class="w-8 h-8 rounded-full flex items-center justify-center font-display text-xs ' + (estaPresente ? 'bg-celeste text-white' : 'bg-bg border border-borderc text-inkmuted') + '">' +
+          iniciales(alumno.nombre) +
+        '</div>' +
+        '<p class="text-sm font-bold ' + (estaPresente ? 'text-celestedark' : 'text-ink') + '">' + alumno.nombre + '</p>' +
+      '</div>' +
+      '<div class="pointer-events-none text-xl">' +
+        (estaPresente ? '✅' : '⬜') +
+      '</div>';
+    contenedor.appendChild(div);
+  });
+  
+  document.getElementById('contadorAsistencia').textContent = presentesSet.size;
+}
+
+function toggleAsistencia(uid) {
+  if (presentesSet.has(uid)) {
+    presentesSet.delete(uid); // Si estaba, lo quitamos
+  } else {
+    presentesSet.add(uid);    // Si no estaba, lo sumamos
+  }
+  renderListaAsistencia(); // Redibujar lista
+}
+
+function ejecutarGuardarAsistencia() {
+  const fecha = document.getElementById('inputFechaClase').value;
+  if (!fecha) return mostrarToast('Selecciona una fecha', 'error');
+  
+  const arrayPresentes = Array.from(presentesSet);
+  if (arrayPresentes.length === 0) {
+    if (!confirm('¿Estás seguro de guardar una clase sin alumnos presentes?')) return;
+  }
+  
+  const btn = document.getElementById('btnGuardarAsistencia');
+  btn.disabled = true;
+  btn.innerText = "Guardando...";
+
+  llamarAPI(
+    'registrarAsistenciaClase',
+    [fecha, arrayPresentes],
+    function(res) {
+      btn.disabled = false;
+      btn.innerText = "Guardar Clase";
+      cerrarModal('modalAsistencia');
+      mostrarToast("¡Asistencia del " + fecha + " guardada!", "info");
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerText = "Guardar Clase";
+      mostrarToast("Error: " + err.message, "error");
+    }
+  );
 }
 
 // ===================== PANEL MAESTRO =====================
