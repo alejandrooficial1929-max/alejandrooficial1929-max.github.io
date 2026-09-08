@@ -391,13 +391,25 @@
     </div>
 
     <!-- Interruptor Monotributo -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between mb-4 border-b border-borderc pb-3">
       <div>
         <p class="text-sm font-bold text-ink">Monotributo GrisPay</p>
         <p class="text-[10px] text-inkmuted font-medium">Habilita la creación de negocios.</p>
       </div>
       <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="toggleMonotributo" class="sr-only peer" onchange="moverInterruptor('monotributoActivo', this.checked)">
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+      </label>
+    </div>
+
+    <!-- Interruptor Inflación (INDEC) -->
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-bold text-ink">Inflación Dinámica</p>
+        <p class="text-[10px] text-inkmuted font-medium">Ajusta los precios del Kiosco por emisión.</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="toggleInflacion" class="sr-only peer" onchange="moverInterruptor('inflacionActiva', this.checked)">
         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
       </label>
     </div>
@@ -1021,7 +1033,7 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxADjrqljaP0feYU0A6NiTT4u7hk53nJ2j6zAhir1OH26Aj_VSnQo-qVfYpWoiL8C_M/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwXMRrTZyCF2bM4HjKd6AZ7QbdLZK2FFrCqPwhO-_Ec5a9C4FOobHiVQN2kUO-83qlN/exec";
   // ==========================================
     // TRADUCTOR UNIVERSAL (Reemplaza google.script.run)
     // ==========================================
@@ -2629,6 +2641,9 @@ function aplicarBanderasDeSistema(parametros) {
   
   const toggleMono = document.getElementById('toggleMonotributo');
   if(toggleMono) toggleMono.checked = parametros.monotributoActivo === true;
+
+  const toggleInf = document.getElementById('toggleInflacion');
+  if(toggleInf) toggleInf.checked = parametros.inflacionActiva === true;
 
   const btnPrestamos = document.getElementById('btnAppPrestamos');
   const btnPrestamosDocente = document.getElementById('btnAppPrestamosDocente');
