@@ -362,6 +362,47 @@
     </p>
   </div>
 
+  <!-- PANEL DE CONTROL MAESTRO -->
+  <div class="bg-surface border border-borderc rounded-2xl p-4 mb-5 shadow-sm">
+    <p class="text-xs uppercase tracking-wider text-celestedark font-bold mb-4">Interruptores del Sistema</p>
+    
+    <!-- Interruptor XP -->
+    <div class="flex items-center justify-between mb-4 border-b border-borderc pb-3">
+      <div>
+        <p class="text-sm font-bold text-ink">Motor de Experiencia (XP)</p>
+        <p class="text-[10px] text-inkmuted font-medium">Permite que los alumnos suban de nivel.</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="toggleXP" class="sr-only peer" onchange="moverInterruptor('xpActiva', this.checked)">
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+      </label>
+    </div>
+
+    <!-- Interruptor Préstamos -->
+    <div class="flex items-center justify-between mb-4 border-b border-borderc pb-3">
+      <div>
+        <p class="text-sm font-bold text-ink">Préstamos Bancarios</p>
+        <p class="text-[10px] text-inkmuted font-medium">Habilita créditos para alumnos Nivel 10+.</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="togglePrestamos" class="sr-only peer" onchange="moverInterruptor('prestamosActivos', this.checked)">
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+      </label>
+    </div>
+
+    <!-- Interruptor Monotributo -->
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm font-bold text-ink">Monotributo GrisPay</p>
+        <p class="text-[10px] text-inkmuted font-medium">Habilita la creación de negocios.</p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="toggleMonotributo" class="sr-only peer" onchange="moverInterruptor('monotributoActivo', this.checked)">
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+      </label>
+    </div>
+  </div>
+
   <h3 class="text-sm font-bold text-ink mb-3">Operaciones Centrales</h3>
   <div class="grid grid-cols-4 gap-2 mb-5">
     <button onclick="abrirModalEmitirBanco()" class="bg-surface border border-borderc shadow-sm rounded-2xl p-2 text-center active:scale-[0.98] transition-transform">
@@ -1069,7 +1110,8 @@ window.addEventListener('load', function () {
       .then(function(respuesta) { return respuesta.json(); })
       .then(function(datos) {
         console.log("Parámetros listos");
-        // Si tienes una variable global para parámetros, asígnala aquí (ej: parametros = datos;)
+        // AQUÍ LLAMAMOS A LA FUNCIÓN QUE PRENDE O APAGA LOS BOTONES
+        aplicarBanderasDeSistema(datos);
       })
       .catch(function(error) { console.error("Error al cargar parámetros:", error); });
 
@@ -2550,6 +2592,63 @@ function cerrarBattleGris() {
       screen.orientation.unlock();
     }
   } catch(e) {}
+}
+
+function cerrarBattleGris() {
+  // 1. Ocultamos el ecosistema de juego
+  document.getElementById('pantallaBattleGris').classList.add('hidden');
+  
+  // 2. Volvemos a mostrar la app principal
+  document.getElementById('app').classList.remove('hidden');
+  
+  // (Opcional) Desbloquear la orientación del teléfono
+  try {
+    if (screen.orientation && screen.orientation.unlock) {
+      screen.orientation.unlock();
+    }
+  } catch(e) {}
+}
+
+// ===================== PANEL MAESTRO =====================
+function moverInterruptor(clave, estaEncendido) {
+  llamarAPI(
+    'cambiarInterruptorMaestro',
+    [clave, estaEncendido],
+    function() { mostrarToast("Sistema actualizado", "info"); },
+    function(err) { mostrarToast("Error: " + err.message, "error"); }
+  );
+}
+
+// ===================== APLICAR BLOQUEOS VISUALES =====================
+function aplicarBanderasDeSistema(parametros) {
+  const toggleXP = document.getElementById('toggleXP');
+  if(toggleXP) toggleXP.checked = parametros.xpActiva === true;
+  
+  const togglePrest = document.getElementById('togglePrestamos');
+  if(togglePrest) togglePrest.checked = parametros.prestamosActivos === true;
+  
+  const toggleMono = document.getElementById('toggleMonotributo');
+  if(toggleMono) toggleMono.checked = parametros.monotributoActivo === true;
+
+  const btnPrestamos = document.getElementById('btnAppPrestamos');
+  const btnMonotributo = document.getElementById('btnAppImpuestos');
+  const btnBattleGris = document.querySelector('button[onclick="abrirBattleGris()"]');
+  
+  if (btnPrestamos) {
+    if (parametros.prestamosActivos) btnPrestamos.classList.remove('proximamente-bloqueo');
+    else btnPrestamos.classList.add('proximamente-bloqueo');
+  }
+
+  if (btnMonotributo) {
+    if (parametros.monotributoActivo) btnMonotributo.classList.remove('proximamente-bloqueo');
+    else btnMonotributo.classList.add('proximamente-bloqueo');
+  }
+
+  // Podemos atar Battle Gris al interruptor de XP
+  if (btnBattleGris) {
+    if (parametros.xpActiva) btnBattleGris.classList.remove('proximamente-bloqueo');
+    else btnBattleGris.classList.add('proximamente-bloqueo');
+  }
 }
 
   </script>
